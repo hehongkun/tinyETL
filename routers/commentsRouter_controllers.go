@@ -7,6 +7,51 @@ import (
 
 func init() {
 
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "Post",
+            Router: "/add",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "Delete",
+            Router: "/deletetask:id",
+            AllowHTTPMethods: []string{"delete"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "Put",
+            Router: "/edittask:id",
+            AllowHTTPMethods: []string{"put"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "GetAll",
+            Router: "/getall",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "GetOne",
+            Router: "/gettask:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
     beego.GlobalControllerRouter["tinyETL/controllers:UserController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:UserController"],
         beego.ControllerComments{
             Method: "AddUser",

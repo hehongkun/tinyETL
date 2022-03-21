@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"tinyETL/models"
+	"tinyETL/utils"
 
 	"github.com/beego/beego/v2/core/logs"
 	beego "github.com/beego/beego/v2/server/web"
@@ -71,11 +72,19 @@ func (c *UserController) Login() {
 			query["username"] = v.Username
 			if res, err := models.GetUserByUsername(v.Username); err != nil || res == nil {
 				if _, err := models.AddUser(&v); err == nil {
-					c.Ctx.Output.SetStatus(201)
-					ret["success"] = true
-					ret["data"] = "successfully created user!"
-					ret["user"] = v
-					c.Data["json"] = ret
+					if token,err := utils.GenerateToken(0,v) ; err != nil{
+						ret["success"] = false
+						ret["data"] = "error occured while creat token!"
+						ret["err"] = err.Error()
+						c.Data["json"] = ret
+					}else{
+						c.Ctx.Output.SetStatus(201)
+						ret["success"] = true
+						ret["data"] = "successfully created user!"
+						ret["user"] = v
+						ret["token"] = token
+						c.Data["json"] = ret
+					}
 				} else {
 					ret["success"] = false
 					ret["data"] = "error occured while creat user!"
@@ -92,10 +101,18 @@ func (c *UserController) Login() {
 					ret["data"] = "username or password is wrong"
 					c.Data["json"] = ret
 				} else {
-					c.Ctx.Output.SetStatus(200)
-					ret["success"] = true
-					ret["data"] = "login success"
-					c.Data["json"] = ret
+					if token,err := utils.GenerateToken(0,v) ; err != nil{
+						ret["success"] = false
+						ret["data"] = "error occured while creat token!"
+						ret["err"] = err.Error()
+						c.Data["json"] = ret
+					}else{
+						c.Ctx.Output.SetStatus(200)
+						ret["success"] = true
+						ret["data"] = "login success"
+						ret["token"] = token
+						c.Data["json"] = ret
+					}
 				}
 			}
 		}

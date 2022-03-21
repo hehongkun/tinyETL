@@ -8,22 +8,40 @@
 package routers
 
 import (
+	"strings"
 	"tinyETL/controllers"
 
 	beego "github.com/beego/beego/v2/server/web"
-	"github.com/beego/beego/v2/server/web/filter/cors"
+	"github.com/beego/beego/v2/server/web/context"
 )
 
+
+
+
 func init() {
-	// 解决前后端跨域问题
-	beego.InsertFilter("/*", beego.BeforeRouter, cors.Allow(&cors.Options{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"*"},
-		AllowHeaders:     []string{"*"},
-		AllowCredentials: true,
-	}))
+	var FilterToken = func(ctx *context.Context) {
+		// logs.Info("current router path is ", ctx.Request.RequestURI)
+		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Input.Header("Authorization") == "" {
+			ctx.ResponseWriter.WriteHeader(401)
+			ctx.ResponseWriter.Write([]byte("no permission"))
+		}
+		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Input.Header("Authorization") != "" {
+			token := ctx.Input.Header("Authorization")
+			token = strings.Split(token, "")[1]
+			// validate token
+			// invoke ValidateToken in utils/token
+			// invalid or expired todo res 401
+		}
+	}
+
+	beego.InsertFilter("/*",beego.BeforeRouter,FilterToken)
 	ns := beego.NewNamespace("/tinyETL",
 
+		beego.NSNamespace("/task_data",
+			beego.NSInclude(
+				&controllers.TaskDataController{},
+			),
+		),
 		beego.NSNamespace("/user",
 			beego.NSInclude(
 				&controllers.UserController{},
