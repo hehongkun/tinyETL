@@ -8,11 +8,12 @@
 package routers
 
 import (
-	"strings"
 	"tinyETL/controllers"
+	"tinyETL/utils"
 
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
+	"github.com/beego/beego/v2/server/web/filter/cors"
 )
 
 
@@ -21,23 +22,35 @@ import (
 func init() {
 	var FilterToken = func(ctx *context.Context) {
 		// logs.Info("current router path is ", ctx.Request.RequestURI)
-		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Input.Header("Authorization") == "" {
+		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") == "" {
 			ctx.ResponseWriter.WriteHeader(401)
 			ctx.ResponseWriter.Write([]byte("no permission"))
 		}
-		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Input.Header("Authorization") != "" {
+		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") != "" {
 			token := ctx.Input.Header("Authorization")
-			token = strings.Split(token, "")[1]
+			if _,err := utils.ValidateToken(token); err != nil{
+				ctx.ResponseWriter.WriteHeader(401)
+				ctx.ResponseWriter.Write([]byte("no permission"))
+			}
 			// validate token
 			// invoke ValidateToken in utils/token
 			// invalid or expired todo res 401
 		}
 	}
 
+
+	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
+		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
+		AllowCredentials: true,
+}))
+
 	beego.InsertFilter("/*",beego.BeforeRouter,FilterToken)
 	ns := beego.NewNamespace("/tinyETL",
 
-		beego.NSNamespace("/task_data",
+		beego.NSNamespace("/task",
 			beego.NSInclude(
 				&controllers.TaskDataController{},
 			),

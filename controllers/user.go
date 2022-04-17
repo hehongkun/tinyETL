@@ -10,7 +10,6 @@ import (
 	"tinyETL/models"
 	"tinyETL/utils"
 
-	"github.com/beego/beego/v2/core/logs"
 	beego "github.com/beego/beego/v2/server/web"
 )
 
@@ -26,6 +25,7 @@ func (c *UserController) URLMapping() {
 	c.Mapping("GetAll", c.GetAll)
 	c.Mapping("Put", c.Put)
 	c.Mapping("Login", c.Login)
+	c.Mapping("RefreshToken", c.RefreshToken)
 	c.Mapping("Delete", c.Delete)
 }
 
@@ -51,6 +51,29 @@ func (c *UserController) AddUser() {
 	c.ServeJSON()
 }
 
+// RefreshToken ...
+// @Title RefreshToken
+// @Description refresh the token of user
+// @Param	body		body 	models.User	true		"body for User content"
+// @Success 200 {string} tokenStr
+// @Failure 403 :refresh token failed
+// @router /refreshtoken [post]
+func (c *UserController) RefreshToken() {
+	ret := make(map[string]interface{})
+	if newToken, err := utils.RefreshToken(c.Ctx.Input.Header("Authorization")); err != nil{
+		ret["success"] = false
+		ret["data"] = "refresh token failed"
+		c.Data["json"] = ret
+		c.Ctx.ResponseWriter.WriteHeader(403)
+	} else{
+		ret["success"] = true
+		ret["data"] = newToken
+		c.Data["json"] = ret
+		c.Ctx.ResponseWriter.WriteHeader(200)
+	}
+	c.ServeJSON()
+}
+
 // Login ...
 // @Title Login
 // @Description make user login
@@ -59,7 +82,6 @@ func (c *UserController) AddUser() {
 // @Failure 403 :id is not int
 // @router /login [post]
 func (c *UserController) Login() {
-	log := logs.NewLogger()
 	var v models.User
 	ret := make(map[string]interface{})
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
@@ -68,10 +90,9 @@ func (c *UserController) Login() {
 			ret["data"] = "username or password can't less than 6 characters"
 			c.Data["json"] = ret
 		} else {
-			query := make(map[string]string)
-			query["username"] = v.Username
 			if res, err := models.GetUserByUsername(v.Username); err != nil || res == nil {
-				if _, err := models.AddUser(&v); err == nil {
+				if id, err := models.AddUser(&v); err == nil {
+					v.Id = int(id)
 					if token,err := utils.GenerateToken(0,v) ; err != nil{
 						ret["success"] = false
 						ret["data"] = "error occured while creat token!"
@@ -92,8 +113,6 @@ func (c *UserController) Login() {
 					c.Data["json"] = ret
 				}
 			} else {
-				log.Info(res.Username)
-				log.Info(res.Password)
 				m := md5.New()
 				m.Write([]byte(v.Password))
 				if hex.EncodeToString(m.Sum(nil)) != res.Password {
@@ -101,7 +120,7 @@ func (c *UserController) Login() {
 					ret["data"] = "username or password is wrong"
 					c.Data["json"] = ret
 				} else {
-					if token,err := utils.GenerateToken(0,v) ; err != nil{
+					if token,err := utils.GenerateToken(0,*res) ; err != nil{
 						ret["success"] = false
 						ret["data"] = "error occured while creat token!"
 						ret["err"] = err.Error()
