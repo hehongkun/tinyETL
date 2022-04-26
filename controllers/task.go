@@ -34,12 +34,12 @@ func (c *TaskDataController) URLMapping() {
 // @Failure 403 body is empty
 // @router /add [post]
 func (c *TaskDataController) Post() {
-	var v models.TaskData	
+	var v models.TaskData
 	ret := make(map[string]interface{})
-	if user, err := utils.ValidateToken(c.Ctx.Input.Header("Authorization")); err != nil{
+	if user, err := utils.ValidateToken(c.Ctx.Input.Header("Authorization")); err != nil {
 		c.Ctx.ResponseWriter.WriteHeader(401)
 		c.Ctx.ResponseWriter.Write([]byte("no permission"))
-	}	else{
+	} else {
 		if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 			v.UserId = user.Id
 			if _, err := models.AddTaskData(&v); err == nil {
@@ -87,14 +87,14 @@ func (c *TaskDataController) GetOne() {
 // @Failure 403
 // @router /getalltasklist [get]
 func (c *TaskDataController) GetAllTaskList() {
-	if user, err := utils.ValidateToken(c.Ctx.Input.Header("Authorization")); err != nil{
+	if user, err := utils.ValidateToken(c.Ctx.Input.Header("Authorization")); err != nil {
 		c.Ctx.ResponseWriter.WriteHeader(401)
 		c.Ctx.ResponseWriter.Write([]byte("no permission"))
-	}	else{
-		if taskInfo,err := models.GetAllTaskList(user.Id); err != nil {		
+	} else {
+		if taskInfo, err := models.GetAllTaskList(user.Id); err != nil {
 			c.Ctx.ResponseWriter.WriteHeader(403)
 			c.Ctx.ResponseWriter.Write([]byte("err occured while get taskinfo"))
-		} else{
+		} else {
 			c.Ctx.ResponseWriter.WriteHeader(200)
 			c.Data["json"] = taskInfo
 		}

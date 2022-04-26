@@ -60,12 +60,12 @@ func (c *UserController) AddUser() {
 // @router /refreshtoken [post]
 func (c *UserController) RefreshToken() {
 	ret := make(map[string]interface{})
-	if newToken, err := utils.RefreshToken(c.Ctx.Input.Header("Authorization")); err != nil{
+	if newToken, err := utils.RefreshToken(c.Ctx.Request.Header.Get("Authorization")); err != nil {
 		ret["success"] = false
 		ret["data"] = "refresh token failed"
 		c.Data["json"] = ret
 		c.Ctx.ResponseWriter.WriteHeader(403)
-	} else{
+	} else {
 		ret["success"] = true
 		ret["data"] = newToken
 		c.Data["json"] = ret
@@ -93,12 +93,12 @@ func (c *UserController) Login() {
 			if res, err := models.GetUserByUsername(v.Username); err != nil || res == nil {
 				if id, err := models.AddUser(&v); err == nil {
 					v.Id = int(id)
-					if token,err := utils.GenerateToken(0,v) ; err != nil{
+					if token, err := utils.GenerateToken(0, v); err != nil {
 						ret["success"] = false
 						ret["data"] = "error occured while creat token!"
 						ret["err"] = err.Error()
 						c.Data["json"] = ret
-					}else{
+					} else {
 						c.Ctx.Output.SetStatus(201)
 						ret["success"] = true
 						ret["data"] = "successfully created user!"
@@ -120,12 +120,12 @@ func (c *UserController) Login() {
 					ret["data"] = "username or password is wrong"
 					c.Data["json"] = ret
 				} else {
-					if token,err := utils.GenerateToken(0,*res) ; err != nil{
+					if token, err := utils.GenerateToken(0, *res); err != nil {
 						ret["success"] = false
 						ret["data"] = "error occured while creat token!"
 						ret["err"] = err.Error()
 						c.Data["json"] = ret
-					}else{
+					} else {
 						c.Ctx.Output.SetStatus(200)
 						ret["success"] = true
 						ret["data"] = "login success"
