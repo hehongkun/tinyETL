@@ -5,7 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/beego/beego/v2/client/orm"
@@ -35,6 +38,10 @@ func AddUser(m *User) (id int64, err error) {
 	md5ctx.Write([]byte(m.Password))
 	m.Password = hex.EncodeToString(md5ctx.Sum(nil))
 	id, err = o.Insert(m)
+	err = os.MkdirAll("./userFiles/"+strconv.FormatInt(id, 10), os.ModePerm)
+	if err != nil {
+		fmt.Println(err)
+	}
 	return
 }
 
@@ -58,6 +65,30 @@ func GetUserByUsername(username string) (v *User, err error) {
 		return v, nil
 	}
 	return nil, err
+}
+
+// GetUserFiles retrieves user files by Id. Returns error if
+// read directory error
+func GetUserFiles(baseDirPth string, dirPth string) (map[string]interface{}, error) {
+	dir, err := ioutil.ReadDir(baseDirPth + dirPth)
+	if err != nil {
+		return nil, err
+	}
+	val := []interface{}{}
+	for _, file := range dir {
+		if file.IsDir() {
+			if childFiles, err := GetUserFiles(baseDirPth+"/"+dirPth+"/", file.Name()); err == nil {
+				val = append(val, childFiles)
+			} else {
+				return nil, err
+			}
+		} else {
+			val = append(val, file.Name())
+		}
+	}
+	res := make(map[string]interface{})
+	res[dirPth] = val
+	return res, nil
 }
 
 // GetAllUser retrieves all User matches certain condition. Returns empty list if

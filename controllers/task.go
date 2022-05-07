@@ -195,7 +195,7 @@ func (c *TaskDataController) Put() {
 // @Param	id		path 	string	true		"The id you want to delete"
 // @Success 200 {string} delete success!
 // @Failure 403 id is empty
-// @router /deletetask:id [delete]
+// @router /deletetask/:id [delete]
 func (c *TaskDataController) Delete() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)

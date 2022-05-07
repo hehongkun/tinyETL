@@ -9,14 +9,74 @@ info:
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-basePath: /v1
+basePath: /tinyETL
 paths:
-  /user/:
+  /task/add:
+    post:
+      tags:
+      - task
+      description: create TaskData
+      operationId: TaskDataController.Post
+      parameters:
+      - in: body
+        name: body
+        description: body for TaskData content
+        required: true
+        schema:
+          $ref: '#/definitions/models.TaskData'
+      responses:
+        "201":
+          description: '{int} models.TaskData'
+        "403":
+          description: body is empty
+  /task/deletetask:id:
+    delete:
+      tags:
+      - task
+      description: delete the TaskData
+      operationId: TaskDataController.Delete
+      parameters:
+      - in: path
+        name: id
+        description: The id you want to delete
+        required: true
+        type: string
+      responses:
+        "200":
+          description: '{string} delete success!'
+        "403":
+          description: id is empty
+  /task/edittask:id:
+    put:
+      tags:
+      - task
+      description: update the TaskData
+      operationId: TaskDataController.Put
+      parameters:
+      - in: path
+        name: id
+        description: The id you want to update
+        required: true
+        type: string
+      - in: body
+        name: body
+        description: body for TaskData content
+        required: true
+        schema:
+          $ref: '#/definitions/models.TaskData'
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.TaskData'
+        "403":
+          description: :id is not int
+  /task/getall:
     get:
       tags:
-      - user
-      description: get User
-      operationId: UserController.Get All
+      - task
+      description: get TaskData
+      operationId: TaskDataController.Get All
       parameters:
       - in: query
         name: query
@@ -32,8 +92,7 @@ paths:
         type: string
       - in: query
         name: order
-        description: Order corresponding to each sortby field, if single value, apply
-          to all sortby fields. e.g. desc,asc ...
+        description: Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ...
         type: string
       - in: query
         name: limit
@@ -47,32 +106,28 @@ paths:
         "200":
           description: ""
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/models.TaskData'
         "403":
           description: ""
-    post:
-      tags:
-      - user
-      description: create User
-      operationId: UserController.Post
-      parameters:
-      - in: body
-        name: body
-        description: body for User content
-        required: true
-        schema:
-          $ref: '#/definitions/models.User'
-      responses:
-        "201":
-          description: '{int} models.User'
-        "403":
-          description: body is empty
-  /user/{id}:
+  /task/getalltasklist:
     get:
       tags:
-      - user
-      description: get User by id
-      operationId: UserController.Get One
+      - task
+      description: get TaskData
+      operationId: TaskDataController.Get All Task Of a User
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.TaskData'
+        "403":
+          description: ""
+  /task/gettask:id:
+    get:
+      tags:
+      - task
+      description: get TaskData by id
+      operationId: TaskDataController.Get One
       parameters:
       - in: path
         name: id
@@ -83,9 +138,45 @@ paths:
         "200":
           description: ""
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/models.TaskData'
         "403":
           description: :id is empty
+  /user/adduser:
+    post:
+      tags:
+      - user
+      description: create User
+      operationId: UserController.AddUser
+      parameters:
+      - in: body
+        name: body
+        description: body for User content
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      responses:
+        "200":
+          description: '{int} models.User'
+        "403":
+          description: body is empty
+  /user/deleteuser:id:
+    delete:
+      tags:
+      - user
+      description: delete the User
+      operationId: UserController.Delete
+      parameters:
+      - in: path
+        name: id
+        description: The id you want to delete
+        required: true
+        type: string
+      responses:
+        "200":
+          description: '{string} delete success!'
+        "403":
+          description: id is empty
+  /user/edituser:id:
     put:
       tags:
       - user
@@ -110,23 +201,139 @@ paths:
             $ref: '#/definitions/models.User'
         "403":
           description: :id is not int
-    delete:
+  /user/getall:
+    get:
       tags:
       - user
-      description: delete the User
-      operationId: UserController.Delete
+      description: get User
+      operationId: UserController.Get All
+      parameters:
+      - in: query
+        name: query
+        description: Filter. e.g. col1:v1,col2:v2 ...
+        type: string
+      - in: query
+        name: fields
+        description: Fields returned. e.g. col1,col2 ...
+        type: string
+      - in: query
+        name: sortby
+        description: Sorted-by fields. e.g. col1,col2 ...
+        type: string
+      - in: query
+        name: order
+        description: Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ...
+        type: string
+      - in: query
+        name: limit
+        description: Limit the size of result set. Must be an integer
+        type: string
+      - in: query
+        name: offset
+        description: Start position of result set. Must be an integer
+        type: string
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.User'
+        "403":
+          description: ""
+  /user/getuser:id:
+    get:
+      tags:
+      - user
+      description: get User by id
+      operationId: UserController.Get One
       parameters:
       - in: path
         name: id
-        description: The id you want to delete
+        description: The key for staticblock
         required: true
         type: string
       responses:
         "200":
-          description: '{string} delete success!'
+          description: ""
+          schema:
+            $ref: '#/definitions/models.User'
         "403":
-          description: id is empty
+          description: :id is empty
+  /user/getuserfiles:id:
+    get:
+      tags:
+      - user
+      description: Get the files of the user
+      operationId: UserController.GetUserFiles
+      parameters:
+      - in: path
+        name: id
+        description: The id of the user
+        required: true
+        type: string
+      responses:
+        "200":
+          description: '{string} get success!'
+        "403":
+          description: error occurred
+  /user/login:
+    post:
+      tags:
+      - user
+      description: make user login
+      operationId: UserController.Login
+      parameters:
+      - in: body
+        name: body
+        description: body for User content
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      responses:
+        "200":
+          description: ""
+          schema:
+            $ref: '#/definitions/models.User'
+        "403":
+          description: :id is not int
+  /user/refreshtoken:
+    post:
+      tags:
+      - user
+      description: refresh the token of user
+      operationId: UserController.RefreshToken
+      parameters:
+      - in: body
+        name: body
+        description: body for User content
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      responses:
+        "200":
+          description: '{string} tokenStr'
+        "403":
+          description: :refresh token failed
 definitions:
+  models.TaskData:
+    title: TaskData
+    type: object
+    properties:
+      Createtime:
+        type: string
+        format: datetime
+      Data:
+        type: string
+      Id:
+        type: integer
+        format: int64
+      Name:
+        type: string
+      Updatetime:
+        type: string
+        format: datetime
+      UserId:
+        type: integer
+        format: int64
   models.User:
     title: User
     type: object
@@ -143,6 +350,9 @@ definitions:
       Username:
         type: string
 tags:
+- name: task
+  description: |
+    TaskDataController operations for TaskData
 - name: user
   description: |
     UserController operations for User

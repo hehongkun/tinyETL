@@ -27,6 +27,7 @@ func (c *UserController) URLMapping() {
 	c.Mapping("Login", c.Login)
 	c.Mapping("RefreshToken", c.RefreshToken)
 	c.Mapping("Delete", c.Delete)
+	c.Mapping("GetUserFiles", c.GetUserFiles)
 }
 
 // AddUser ...
@@ -126,10 +127,12 @@ func (c *UserController) Login() {
 						ret["err"] = err.Error()
 						c.Data["json"] = ret
 					} else {
+						v.Id = res.Id
 						c.Ctx.Output.SetStatus(200)
 						ret["success"] = true
 						ret["data"] = "login success"
 						ret["token"] = token
+						ret["user"] = v
 						c.Data["json"] = ret
 					}
 				}
@@ -147,7 +150,7 @@ func (c *UserController) Login() {
 // @Param	id		path 	string	true		"The key for staticblock"
 // @Success 200 {object} models.User
 // @Failure 403 :id is empty
-// @router /getuser/:id [get]
+// @router /getuser:id [get]
 func (c *UserController) GetOne() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
@@ -261,6 +264,28 @@ func (c *UserController) Delete() {
 		c.Data["json"] = "OK"
 	} else {
 		c.Data["json"] = err.Error()
+	}
+	c.ServeJSON()
+}
+
+// GetUserFiles ...
+// @Title GetUserFiles
+// @Description Get the files of the user
+// @Param	id		path 	string	true		"The id of the user"
+// @Success 200 {string} get success!
+// @Failure 403 error occurred
+// @router /getuserfiles/:id [get]
+func (c *UserController) GetUserFiles() {
+	idStr := c.Ctx.Input.Param(":id")
+	ret := make(map[string]interface{})
+	if res, err := models.GetUserFiles("./userFiles/", idStr); err == nil {
+		ret["success"] = true
+		ret["data"] = res
+		c.Data["json"] = ret
+	} else {
+		ret["success"] = false
+		ret["error"] = err.Error()
+		c.Data["json"] = ret
 	}
 	c.ServeJSON()
 }

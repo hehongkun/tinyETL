@@ -16,9 +16,6 @@ import (
 	"github.com/beego/beego/v2/server/web/filter/cors"
 )
 
-
-
-
 func init() {
 	var FilterToken = func(ctx *context.Context) {
 		// logs.Info("current router path is ", ctx.Request.RequestURI)
@@ -28,7 +25,7 @@ func init() {
 		}
 		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") != "" {
 			token := ctx.Input.Header("Authorization")
-			if _,err := utils.ValidateToken(token); err != nil{
+			if _, err := utils.ValidateToken(token); err != nil {
 				ctx.ResponseWriter.WriteHeader(401)
 				ctx.ResponseWriter.Write([]byte("no permission"))
 			}
@@ -38,18 +35,16 @@ func init() {
 		}
 	}
 
-
 	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
 		AllowCredentials: true,
-}))
+	}))
 
-	beego.InsertFilter("/*",beego.BeforeRouter,FilterToken)
+	beego.InsertFilter("*", beego.BeforeRouter, FilterToken)
 	ns := beego.NewNamespace("/tinyETL",
-
 		beego.NSNamespace("/task",
 			beego.NSInclude(
 				&controllers.TaskDataController{},

@@ -19,7 +19,7 @@ func init() {
     beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
         beego.ControllerComments{
             Method: "Delete",
-            Router: "/deletetask:id",
+            Router: "/deletetask/:id",
             AllowHTTPMethods: []string{"delete"},
             MethodParams: param.Make(),
             Filters: nil,
@@ -100,7 +100,16 @@ func init() {
     beego.GlobalControllerRouter["tinyETL/controllers:UserController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:UserController"],
         beego.ControllerComments{
             Method: "GetOne",
-            Router: "/getuser/:id",
+            Router: "/getuser:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:UserController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:UserController"],
+        beego.ControllerComments{
+            Method: "GetUserFiles",
+            Router: "/getuserfiles/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,

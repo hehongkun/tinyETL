@@ -14,6 +14,7 @@ func init() {
 }
 
 func main() {
+	beego.SetStaticPath("/tinyETL/userFiles", "userFiles")
 	if beego.BConfig.RunMode == "dev" {
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"

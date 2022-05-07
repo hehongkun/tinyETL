@@ -9,11 +9,10 @@ import (
 )
 
 const (
-	KEY string = "JWT-ARY-STARK"
-	DEFAULT_EXPIRE_SECONDS int = 600 // default 10 minutes
+	KEY                    string = "JWT-ARY-STARK"
+	DEFAULT_EXPIRE_SECONDS int    = 60000 // default 10 minutes
 
 )
-
 
 // JWT -- json web token
 // HEADER PAYLOAD SIGNATURE
@@ -23,14 +22,13 @@ type MyCustomClaims struct {
 	jwt.StandardClaims
 }
 
-
 // update expireAt and return a new token
-func RefreshToken(tokenString string)(string, error) {
+func RefreshToken(tokenString string) (string, error) {
 	// first get previous token
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&MyCustomClaims{},
-		func(token *jwt.Token)(interface{}, error) {
+		func(token *jwt.Token) (interface{}, error) {
 			return []byte(KEY), nil
 		})
 	claims, ok := token.Claims.(*MyCustomClaims)
@@ -38,7 +36,7 @@ func RefreshToken(tokenString string)(string, error) {
 		return "", err
 	}
 	mySigningKey := []byte(KEY)
-	expireAt  := time.Now().Add(time.Second * time.Duration(DEFAULT_EXPIRE_SECONDS)).Unix()
+	expireAt := time.Now().Add(time.Second * time.Duration(DEFAULT_EXPIRE_SECONDS)).Unix()
 	newClaims := MyCustomClaims{
 		claims.User,
 		jwt.StandardClaims{
@@ -52,38 +50,36 @@ func RefreshToken(tokenString string)(string, error) {
 	tokenStr, err := newToken.SignedString(mySigningKey)
 	if err != nil {
 		fmt.Println("generate new fresh json web token failed !! error :", err)
-		return  "" , err
+		return "", err
 	}
 	return tokenStr, err
 }
-
 
 func ValidateToken(tokenString string) (*models.User, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&MyCustomClaims{},
-		func(token *jwt.Token)(interface{}, error) {
+		func(token *jwt.Token) (interface{}, error) {
 			return []byte(KEY), nil
 		})
 	if claims, ok := token.Claims.(*MyCustomClaims); ok && token.Valid {
 		fmt.Printf("%v %v", claims.User, claims.StandardClaims.ExpiresAt)
 		fmt.Println("token will be expired at ", time.Unix(claims.StandardClaims.ExpiresAt, 0))
-		return &claims.User,nil
+		return &claims.User, nil
 	} else {
-		fmt.Println("validate tokenString failed !!!",err)
-		return nil,err
+		fmt.Println("validate tokenString failed !!!", err)
+		return nil, err
 	}
 }
 
-
-func GenerateToken(expiredSeconds int,user models.User) (tokenString string,err error) {
-	 if expiredSeconds == 0 {
-	 	expiredSeconds = DEFAULT_EXPIRE_SECONDS
-	 }
+func GenerateToken(expiredSeconds int, user models.User) (tokenString string, err error) {
+	if expiredSeconds == 0 {
+		expiredSeconds = DEFAULT_EXPIRE_SECONDS
+	}
 	// Create the Claims
 	mySigningKey := []byte(KEY)
-	expireAt  := time.Now().Add(time.Second * time.Duration(expiredSeconds)).Unix()
-	fmt.Println("token will be expired at ", time.Unix(expireAt, 0) )
+	expireAt := time.Now().Add(time.Second * time.Duration(expiredSeconds)).Unix()
+	fmt.Println("token will be expired at ", time.Unix(expireAt, 0))
 	claims := MyCustomClaims{
 		user,
 		jwt.StandardClaims{
@@ -95,9 +91,9 @@ func GenerateToken(expiredSeconds int,user models.User) (tokenString string,err 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString(mySigningKey)
 	if err != nil {
-		return "",err
+		return "", err
 	}
-	return tokenStr,nil
+	return tokenStr, nil
 }
 
 // return this result to client then all later request should have header "Authorization: Bearer <token> "
@@ -105,5 +101,3 @@ func getHeaderTokenValue(tokenString string) string {
 	//Authorization: Bearer <token>
 	return fmt.Sprintf("Bearer %s", tokenString)
 }
-
-
