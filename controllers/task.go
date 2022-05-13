@@ -24,6 +24,7 @@ func (c *TaskDataController) URLMapping() {
 	c.Mapping("GetAllTaskList", c.GetAllTaskList)
 	c.Mapping("Put", c.Put)
 	c.Mapping("Delete", c.Delete)
+	c.Mapping("Run", c.Run)
 }
 
 // Post ...
@@ -203,6 +204,36 @@ func (c *TaskDataController) Delete() {
 		c.Data["json"] = "OK"
 	} else {
 		c.Data["json"] = err.Error()
+	}
+	c.ServeJSON()
+}
+
+
+// Post ...
+// @Title Post
+// @Description create TaskData
+// @Param	body		body 	models.TaskData	true		"body for TaskData content"
+// @Success 200 {int} executor.id
+// @Failure 403 body is empty
+// @router /run [post]
+func (c *TaskDataController) Run() {
+	var v models.TaskData
+	ret := make(map[string]interface{})
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
+		if err := models.UpdateTaskDataById(&v); err == nil {
+			if id,err := models.Run(v.Data); err == nil {
+				ret["data"] = id
+				ret["success"] = true
+				c.Data["json"] = ret
+			} else {
+				ret["success"] = false
+				c.Data["json"] = ret
+			}
+		} else {
+			c.Data["err"] = err.Error()
+			ret["success"] = false
+			c.Data["json"] = ret
+		}
 	}
 	c.ServeJSON()
 }

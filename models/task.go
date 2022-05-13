@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"tinyETL/tinyETLengine/executor"
 
 	"github.com/astaxie/beego/logs"
 	"github.com/beego/beego/v2/client/orm"
@@ -170,4 +171,17 @@ func DeleteTaskData(id int) (err error) {
 		}
 	}
 	return
+}
+
+
+// Run the task of the task data
+func Run(taskData string) (id string,err error) {
+	exectors := executor.GetExecutors()
+	exec,err := executor.GenerateExecutor(taskData)
+	if err != nil {
+		return "",err
+	}
+	(*exectors)[exec.GetId()] = exec
+	exec.Run()
+	return exec.GetId(),nil
 }
