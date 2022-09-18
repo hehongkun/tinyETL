@@ -19,11 +19,11 @@ import (
 func init() {
 	var FilterToken = func(ctx *context.Context) {
 		// logs.Info("current router path is ", ctx.Request.RequestURI)
-		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") == "" {
+		if ctx.Request.RequestURI != "/tinyETL/task/run" && ctx.Request.RequestURI != "/tinyETL/task/schedule" && ctx.Request.RequestURI != "/tinyETL/componentlog/" && ctx.Request.RequestURI != "/tinyETL/tasklog/" && ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") == "" {
 			ctx.ResponseWriter.WriteHeader(401)
 			ctx.ResponseWriter.Write([]byte("no permission"))
 		}
-		if ctx.Request.RequestURI != "/tinyETL/user/login" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") != "" {
+		if ctx.Request.RequestURI != "/tinyETL/task/run" && ctx.Request.RequestURI != "/tinyETL/task/schedule" && ctx.Request.RequestURI != "/tinyETL/tasklog/" && ctx.Request.RequestURI != "/tinyETL/user/refreshtoken" && ctx.Input.Header("Authorization") != "" {
 			token := ctx.Input.Header("Authorization")
 			if _, err := utils.ValidateToken(token); err != nil {
 				ctx.ResponseWriter.WriteHeader(401)
@@ -53,6 +53,16 @@ func init() {
 		beego.NSNamespace("/user",
 			beego.NSInclude(
 				&controllers.UserController{},
+			),
+		),
+		beego.NSNamespace("/tasklog",
+			beego.NSInclude(
+				&controllers.TaskLogController{},
+			),
+		),
+		beego.NSNamespace("/componentlog",
+			beego.NSInclude(
+				&controllers.ComponentLogController{},
 			),
 		),
 	)

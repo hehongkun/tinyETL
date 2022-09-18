@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"tinyETL/tinyETLengine/components/abstractComponents"
+	"tinyETL/tinyETLengine/components/utils"
+	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type fieldMapping struct {
@@ -22,8 +24,11 @@ type mysqlOutput struct {
 	abstractComponents.AbstractComponent
 }
 
-func (m mysqlOutput) Run(indata chan interface{}, outdata chan interface{}, datameta map[string]map[string]interface{}) {
-	defer close(outdata)
+func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+	m.SetStartTime()
+	defer close(*outdata)
+	defer m.SetEndTime()
+	m.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
 	var sql string
 	sql = "INSERT INTO " + m.table + " ("
@@ -41,7 +46,7 @@ func (m mysqlOutput) Run(indata chan interface{}, outdata chan interface{}, data
 		return
 	}
 	for {
-		value, ok := <-indata
+		value, ok := <-*indata
 		if !ok {
 			break
 		}
@@ -70,7 +75,15 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 		database:      params["database"].(string),
 		table:         params["table"].(string),
 		fieldMappings: []fieldMapping{},
+		AbstractComponent: abstractComponents.AbstractComponent{
+			Id: id,
+			ReadCnt: 0,
+			WriteCnt: 0,
+			Name: "mysqlOutput",
+			Status: 0,
+		},
 	}
+	m.Id,_ = untilId.GenerateUUID()
 	for _, v := range params["fieldMappings"].([]interface{}) {
 		m.fieldMappings = append(m.fieldMappings, fieldMapping{
 			srcField: v.(map[string]interface{})["srcField"].(string),

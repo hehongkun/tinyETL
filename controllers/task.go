@@ -25,6 +25,7 @@ func (c *TaskDataController) URLMapping() {
 	c.Mapping("Put", c.Put)
 	c.Mapping("Delete", c.Delete)
 	c.Mapping("Run", c.Run)
+	c.Mapping("Schedule", c.Schedule)
 }
 
 // Post ...
@@ -221,17 +222,43 @@ func (c *TaskDataController) Run() {
 	ret := make(map[string]interface{})
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := models.UpdateTaskDataById(&v); err == nil {
-			if id,err := models.Run(v.Data); err == nil {
+			if id,err := models.Run(&v); err == nil {
 				ret["data"] = id
 				ret["success"] = true
 				c.Data["json"] = ret
 			} else {
 				ret["success"] = false
+				ret["data"] = err.Error()
 				c.Data["json"] = ret
 			}
 		} else {
-			c.Data["err"] = err.Error()
+			ret["data"] = err.Error()
 			ret["success"] = false
+			c.Data["json"] = ret
+		}
+	}
+	c.ServeJSON()
+}
+
+
+
+// Post ...
+// @Title Post
+// @Description Schedule Task
+// @Param	body		body 	models.TaskData	true		"body for TaskData content"
+// @Success 200
+// @Failure 403 body is empty
+// @router /schedule [post]
+func (c *TaskDataController) Schedule() {
+	var v models.TaskData
+	ret := make(map[string]interface{})
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
+		if err := models.Schedule(&v); err == nil {
+			ret["success"] = true
+			c.Data["json"] = ret
+		} else {
+			ret["success"] = false
+			ret["err"] = err.Error()
 			c.Data["json"] = ret
 		}
 	}

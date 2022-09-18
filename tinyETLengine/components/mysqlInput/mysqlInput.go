@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"tinyETL/tinyETLengine/components/abstractComponents"
+	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type mysqlInput struct {
@@ -16,8 +17,10 @@ type mysqlInput struct {
 	abstractComponents.AbstractComponent
 }
 
-func (m *mysqlInput) Run(indata chan interface{}, outdata chan interface{}, datameta map[string]map[string]interface{}) {
-	defer close(outdata)
+func (m *mysqlInput) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+	m.SetStartTime()
+	defer close(*outdata)
+	defer m.SetEndTime()
 	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
 	rows, err := db.Query(m.sql)
 	if err != nil {
@@ -57,7 +60,7 @@ func (m *mysqlInput) Run(indata chan interface{}, outdata chan interface{}, data
 		for idx, v := range values {
 			row[idx] = string(v.([]byte))
 		}
-		outdata <- row
+		*outdata <- row
 	}
 }
 
@@ -70,9 +73,15 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 		port:     params["port"].(string),
 		database: params["database"].(string),
 		sql:      params["sql"].(string),
+		AbstractComponent: abstractComponents.AbstractComponent{
+			Id: id,
+			ReadCnt: 0,
+			WriteCnt: 0,
+			Name: "mysqlInput",
+			Status: 0,
+		},
 	}
-	m.Id = id
-	m.ReadCnt = 0
-	m.WriteCnt = 0
+	m.Id,_ = untilId.GenerateUUID()
+	m.SetName("mysqlInput")
 	return &m, nil
 }

@@ -7,6 +7,51 @@ import (
 
 func init() {
 
+    beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"],
+        beego.ControllerComments{
+            Method: "Post",
+            Router: "/",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"],
+        beego.ControllerComments{
+            Method: "GetAll",
+            Router: "/",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"],
+        beego.ControllerComments{
+            Method: "GetOne",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"],
+        beego.ControllerComments{
+            Method: "Put",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"put"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:ComponentLogController"],
+        beego.ControllerComments{
+            Method: "Delete",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"delete"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
     beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
         beego.ControllerComments{
             Method: "Post",
@@ -66,6 +111,60 @@ func init() {
             Method: "Run",
             Router: "/run",
             AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "Schedule",
+            Router: "/schedule",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"],
+        beego.ControllerComments{
+            Method: "Post",
+            Router: "/",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"],
+        beego.ControllerComments{
+            Method: "GetAll",
+            Router: "/",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"],
+        beego.ControllerComments{
+            Method: "GetOne",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"],
+        beego.ControllerComments{
+            Method: "Put",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"put"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskLogController"],
+        beego.ControllerComments{
+            Method: "Delete",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"delete"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})

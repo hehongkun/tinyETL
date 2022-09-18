@@ -1,32 +1,45 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"tinyETL/tinyETLengine/executor"
+	"unsafe"
 
-	"github.com/astaxie/beego/logs"
 	"github.com/beego/beego/v2/client/orm"
 )
 
 type TaskData struct {
-	Id         int       `orm:"column(id);auto"`
-	Name       string    `orm:"column(name);size(255);null"`
-	Data       string    `orm:"column(data);null"`
-	Createtime time.Time `orm:"column(createtime);type(timestamp);null"`
-	Updatetime time.Time `orm:"column(updatetime);type(timestamp);null"`
-	UserId     int       `orm:"column(user_id)"`
+	Id           int       `orm:"column(id);auto"`
+	Name         string    `orm:"column(name);size(255);null"`
+	Data         string    `orm:"column(data);null"`
+	Createtime   time.Time `orm:"column(createtime);type(timestamp);null"`
+	Updatetime   time.Time `orm:"column(updatetime);type(timestamp);null"`
+	UserId       int       `orm:"column(user_id)"`
+	DataNum      int       `orm:"column(data_num)"`
+	ExecMechine  string    `orm:"column(exec_mechine);size(255);null"`
+	ScheduleType int       `orm:"column(schedule_type)"`
 }
 
 func (t *TaskData) TableName() string {
 	return "task"
 }
 
+var pollNum int
+
 func init() {
 	orm.RegisterModel(new(TaskData))
+	pollNum = 0
 }
 
 // AddTaskData insert a new TaskData into database and returns
@@ -50,19 +63,18 @@ func GetTaskDataById(id int) (v *TaskData, err error) {
 
 // GetAllTaskList retrieves the id and name of TaskData by userid. Returns error if
 // Id doesn't exist
-func GetAllTaskList(userid int) (ml []interface{},err error){
+func GetAllTaskList(userid int) (ml []interface{}, err error) {
 	o := orm.NewOrm()
 	qs := o.QueryTable(new(TaskData))
 	var l []TaskData
-	if _,err := qs.Filter("user_id",userid).All(&l);err!= nil{
-		return nil,err
-	}else{
-		logs.Info(l)
-		for _,v := range l {
+	if _, err := qs.Filter("user_id", userid).All(&l); err != nil {
+		return nil, err
+	} else {
+		for _, v := range l {
 			ml = append(ml, v)
 		}
 	}
-	return ml,nil
+	return ml, nil
 }
 
 // GetAllTaskData retrieves all TaskData matches certain condition. Returns empty list if
@@ -173,15 +185,137 @@ func DeleteTaskData(id int) (err error) {
 	return
 }
 
-
 // Run the task of the task data
-func Run(taskData string) (id string,err error) {
+func Run(taskData *TaskData) (id string, err error) {
 	exectors := executor.GetExecutors()
-	exec,err := executor.GenerateExecutor(taskData)
+	exec, err := executor.GenerateExecutor(taskData.Data, taskData.ExecMechine, taskData.DataNum)
 	if err != nil {
-		return "",err
+		return "", err
 	}
 	(*exectors)[exec.GetId()] = exec
 	exec.Run()
-	return exec.GetId(),nil
+	return exec.GetId(), nil
+}
+
+// Run the task of the task data
+func Schedule(taskData *TaskData) (err error) {
+	switch taskData.ScheduleType {
+	case 0:
+		Poll(taskData)
+	case 1:
+		Greedy(taskData)
+	default:
+		return errors.New("Schedule type error")
+	}
+	return nil
+}
+
+func Poll(taskData *TaskData) {
+	pollNum = (pollNum + 1) % 4
+	url := "http://192.168.102.21:"
+	if pollNum == 0 {
+		taskData.ExecMechine = "k8s-node1"
+		url += "30081"
+	} else if pollNum == 1 {
+		taskData.ExecMechine = "k8s-node2"
+		url += "30082"
+	} else if pollNum == 2 {
+		taskData.ExecMechine = "k8s-node3"
+		url += "30083"
+	} else {
+		taskData.ExecMechine = "k8s-node4"
+		url += "30084"
+	}
+	url += "/tinyETL/task/run"
+	bytesData, _ := json.Marshal(taskData)
+	fmt.Println(string(bytesData))
+	res, err := http.Post(url,
+		"application/json;charset=utf-8", bytes.NewBuffer([]byte(bytesData)))
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+	}
+	defer res.Body.Close()
+	content, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+	}
+	str := (*string)(unsafe.Pointer(&content)) //转化为string,优化内存
+	fmt.Println(*str)
+}
+
+func GetCpuUsage(node string) float64 {
+	client := &http.Client{Timeout: 5 * time.Second}
+	url := "http://192.168.102.21:30351/api/v1/query?" +
+		"query=sum(rate(container_cpu_usage_seconds_total{node=\"" + node + "\"}[1m]))" +
+		"/sum(machine_cpu_cores{node=\"" + node + "\"})"
+	resp, err := client.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	var buffer [512]byte
+	result := bytes.NewBuffer(nil)
+	for {
+		n, err := resp.Body.Read(buffer[0:])
+		result.Write(buffer[0:n])
+		if err != nil && err == io.EOF {
+			break
+		} else if err != nil {
+			panic(err)
+		}
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal(result.Bytes(), &data)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	tmpStr := data["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string)
+
+	if cpuUsage, err := strconv.ParseFloat(tmpStr, 64); err != nil {
+		log.Println(err)
+		return 0
+	} else {
+		return cpuUsage
+	}
+}
+
+func Greedy(taskData *TaskData) {
+	k8sNode1Cpu := GetCpuUsage("k8s-node1")
+	k8sNode2Cpu := GetCpuUsage("k8s-node2")
+	k8sNode3Cpu := GetCpuUsage("k8s-node3")
+	k8sNode4Cpu := GetCpuUsage("k8s-node4")
+	if k8sNode1Cpu < k8sNode2Cpu && k8sNode1Cpu < k8sNode3Cpu && k8sNode1Cpu < k8sNode4Cpu {
+		taskData.ExecMechine = "k8s-node1"
+	} else if k8sNode2Cpu < k8sNode1Cpu && k8sNode2Cpu < k8sNode3Cpu && k8sNode2Cpu < k8sNode4Cpu {
+		taskData.ExecMechine = "k8s-node2"
+	} else if k8sNode3Cpu < k8sNode1Cpu && k8sNode3Cpu < k8sNode2Cpu && k8sNode3Cpu < k8sNode4Cpu {
+		taskData.ExecMechine = "k8s-node3"
+	} else {
+		taskData.ExecMechine = "k8s-node4"
+	}
+	url := "http://192.168.102.21:"
+	if taskData.ExecMechine == "k8s-node1" {
+		url += "30081"
+	} else if taskData.ExecMechine == "k8s-node2" {
+		url += "30082"
+	} else if taskData.ExecMechine == "k8s-node3" {
+		url += "30083"
+	} else {
+		url += "30084"
+	}
+	url += "/tinyETL/task/run"
+	bytesData, _ := json.Marshal(taskData)
+	res, err := http.Post(url,
+		"application/json;charset=utf-8", bytes.NewBuffer([]byte(bytesData)))
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+	}
+	defer res.Body.Close()
+	content, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+	}
+	str := (*string)(unsafe.Pointer(&content)) //转化为string,优化内存
+	fmt.Println(*str)
 }

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 	"tinyETL/tinyETLengine/components/abstractComponents"
+	"tinyETL/tinyETLengine/components/utils"
+	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type dstFieldType struct {
@@ -19,24 +21,27 @@ type changeFieldType struct {
 	abstractComponents.AbstractComponent
 }
 
-func (c *changeFieldType) Run(indata chan interface{}, outdata chan interface{}, datameta map[string]map[string]interface{}) {
-	defer close(outdata)
+func (c *changeFieldType) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+	c.SetStartTime()
+	defer close(*outdata)
+	defer c.SetEndTime()
+	c.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	for _, dstFieldType := range c.dstFieldTypes {
-		datameta[dstFieldType.fieldName]["type"] = dstFieldType.fieldType
-		datameta[dstFieldType.fieldName]["format"] = dstFieldType.fieldFormat
+		c.DataMeta[dstFieldType.fieldName]["type"] = dstFieldType.fieldType
+		c.DataMeta[dstFieldType.fieldName]["format"] = dstFieldType.fieldFormat
 	}
-	c.DataMeta = datameta
+	tmpDataMeta := utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	for {
-		data, ok := <-indata
+		data, ok := <-*indata
 		if !ok {
 			break
 		}
-		res := processRow(data, datameta, c.dstFieldTypes)
-		outdata <- res
+		res := c.processRow(data, tmpDataMeta, c.dstFieldTypes)
+		*outdata <- res
 	}
 }
 
-func processRow(data interface{}, srcDatameta map[string]map[string]interface{}, dstFiledTypes []dstFieldType) interface{} {
+func (c *changeFieldType)processRow(data interface{}, srcDatameta map[string]map[string]interface{}, dstFiledTypes []dstFieldType) interface{} {
 	row := data.([]interface{})
 	var err error
 	for _, dstFieldType := range dstFiledTypes {
@@ -149,8 +154,16 @@ func processRow(data interface{}, srcDatameta map[string]map[string]interface{},
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	params := parameters.(map[string]interface{})
 	c := changeFieldType{
+		AbstractComponent: abstractComponents.AbstractComponent{
+			Id: id,
+			ReadCnt: 0,
+			WriteCnt: 0,
+			Name: "ChangeFieldType",
+			Status: 0,
+		},
 		dstFieldTypes: []dstFieldType{},
 	}
+	c.Id,_ = untilId.GenerateUUID()
 	for _, v := range params["fields"].([]interface{}) {
 		dstFieldType := dstFieldType{
 			fieldName:   v.(map[string]interface{})["src"].(string),
@@ -159,5 +172,6 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 		}
 		c.dstFieldTypes = append(c.dstFieldTypes, dstFieldType)
 	}
+	c.SetName("changeFieldType")
 	return &c, nil
 }

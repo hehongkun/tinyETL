@@ -10,7 +10,7 @@ import (
 
 func init() {
 	orm.RegisterDriver("mysql", orm.DRMySQL)
-	orm.RegisterDataBase("default", "mysql", "root:123456@tcp(localhost:3306)/tiny_etl?charset=utf8")
+	orm.RegisterDataBase("default", "mysql", "root:123456@tcp(192.168.102.21:3306)/tiny_etl?charset=utf8")
 }
 
 func main() {
