@@ -28,29 +28,41 @@ func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, d
 	m.SetStartTime()
 	defer close(*outdata)
 	defer m.SetEndTime()
-	m.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
-	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
-	var sql string
-	sql = "INSERT INTO " + m.table + " ("
+	var s string
+	var stmt *sql.Stmt
+	var err error
+	s = "INSERT INTO " + m.table + " ("
 	for _, v := range m.fieldMappings {
-		sql += v.dstField + ","
+		s += v.dstField + ","
 	}
-	sql = sql[:len(sql)-1] + ") VALUES ("
+	s = s[:len(s)-1] + ") VALUES ("
 	for _ = range m.fieldMappings {
-		sql += "?,"
+		s += "?,"
 	}
-	sql = sql[:len(sql)-1] + ")"
-	stmt, err := db.Prepare(sql)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
+	s = s[:len(s)-1] + ")"
+	flag := true
 	for {
 		value, ok := <-*indata
 		if !ok {
 			break
 		}
-		var values []interface{}
+		if flag {
+			m.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
+			db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
+			defer func(db *sql.DB) {
+				err := db.Close()
+				if err != nil {
+					log.Println(err)
+				}
+			}(db)
+			stmt, err = db.Prepare(s)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			flag = false
+		}
+		values := []interface{}{}
 		for _, v := range m.fieldMappings {
 			if value.([]interface{})[datameta[v.srcField]["index"].(int)] == nil {
 				values = append(values, "")
@@ -60,7 +72,7 @@ func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, d
 		}
 		_, err = stmt.Exec(values...)
 		if err != nil {
-			log.Fatalln("mysqlOutput:" + err.Error())
+			log.Println("mysqlOutput:" + err.Error())
 		}
 	}
 }
@@ -76,14 +88,14 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 		table:         params["table"].(string),
 		fieldMappings: []fieldMapping{},
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "mysqlOutput",
-			Status: 0,
+			Name:     "mysqlOutput",
+			Status:   0,
 		},
 	}
-	m.Id,_ = untilId.GenerateUUID()
+	m.Id, _ = untilId.GenerateUUID()
 	for _, v := range params["fieldMappings"].([]interface{}) {
 		m.fieldMappings = append(m.fieldMappings, fieldMapping{
 			srcField: v.(map[string]interface{})["srcField"].(string),

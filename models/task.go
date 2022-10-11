@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"tinyETL/tinyETLengine/executor"
 	"unsafe"
@@ -36,10 +37,12 @@ func (t *TaskData) TableName() string {
 }
 
 var pollNum int
+var lock sync.Mutex
 
 func init() {
 	orm.RegisterModel(new(TaskData))
 	pollNum = 0
+	lock = sync.Mutex{}
 }
 
 // AddTaskData insert a new TaskData into database and returns
@@ -201,7 +204,7 @@ func Run(taskData *TaskData) (id string, err error) {
 func Schedule(taskData *TaskData) (err error) {
 	switch taskData.ScheduleType {
 	case 0:
-		Poll(taskData)
+		go Poll(taskData)
 	case 1:
 		Greedy(taskData)
 	default:
@@ -211,15 +214,18 @@ func Schedule(taskData *TaskData) (err error) {
 }
 
 func Poll(taskData *TaskData) {
+	lock.Lock()
 	pollNum = (pollNum + 1) % 4
+	tmpPollNum := pollNum
+	lock.Unlock()
 	url := "http://192.168.102.21:"
-	if pollNum == 0 {
+	if tmpPollNum == 0 {
 		taskData.ExecMechine = "k8s-node1"
 		url += "30081"
-	} else if pollNum == 1 {
+	} else if tmpPollNum == 1 {
 		taskData.ExecMechine = "k8s-node2"
 		url += "30082"
-	} else if pollNum == 2 {
+	} else if tmpPollNum == 2 {
 		taskData.ExecMechine = "k8s-node3"
 		url += "30083"
 	} else {
@@ -233,14 +239,19 @@ func Poll(taskData *TaskData) {
 		"application/json;charset=utf-8", bytes.NewBuffer([]byte(bytesData)))
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
+		return
 	}
-	defer res.Body.Close()
 	content, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
+		return
 	}
 	str := (*string)(unsafe.Pointer(&content)) //转化为string,优化内存
 	fmt.Println(*str)
+	err = res.Body.Close()
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func GetCpuUsage(node string) float64 {
@@ -250,7 +261,8 @@ func GetCpuUsage(node string) float64 {
 		"/sum(machine_cpu_cores{node=\"" + node + "\"})"
 	resp, err := client.Get(url)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return 0
 	}
 	defer resp.Body.Close()
 	var buffer [512]byte
@@ -261,7 +273,8 @@ func GetCpuUsage(node string) float64 {
 		if err != nil && err == io.EOF {
 			break
 		} else if err != nil {
-			panic(err)
+			log.Println(err)
+			return 0
 		}
 	}
 	var data map[string]interface{}

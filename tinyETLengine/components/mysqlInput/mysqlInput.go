@@ -22,6 +22,12 @@ func (m *mysqlInput) Run(indata *chan interface{}, outdata *chan interface{}, da
 	defer close(*outdata)
 	defer m.SetEndTime()
 	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(db)
 	rows, err := db.Query(m.sql)
 	if err != nil {
 		log.Fatalln(err)

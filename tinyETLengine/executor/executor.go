@@ -108,7 +108,9 @@ func (e *Executor) GetCpuUsage(startFlag bool) {
 		"/sum(machine_cpu_cores{node=\"" + e.execNode + "\"})"
 	resp, err := client.Get(url)
 	if err != nil {
-		panic(err)
+		e.startCpuUsage = -999999
+		fmt.Println(err)
+		return
 	}
 	defer resp.Body.Close()
 	var buffer [512]byte
@@ -119,7 +121,9 @@ func (e *Executor) GetCpuUsage(startFlag bool) {
 		if err != nil && err == io.EOF {
 			break
 		} else if err != nil {
-			panic(err)
+			e.startCpuUsage = -999999
+			fmt.Println(err)
+			return
 		}
 	}
 	var data map[string]interface{}
@@ -127,6 +131,14 @@ func (e *Executor) GetCpuUsage(startFlag bool) {
 	if err != nil {
 		log.Println(err)
 		e.startCpuUsage = 0
+		return
+	}
+	if len(data["data"].(map[string]interface{})["result"].([]interface{})) == 0 {
+		e.startCpuUsage = -9999
+		return
+	}
+	if len(data["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})) == 0 {
+		e.startCpuUsage = -9999
 		return
 	}
 	tmpStr := data["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string)
@@ -150,7 +162,9 @@ func (e *Executor) GetMemUsage(startFlag bool) {
 		"/sum(machine_memory_bytes{node=\"" + e.execNode + "\"})"
 	resp, err := client.Get(url)
 	if err != nil {
-		panic(err)
+		e.startMemUsage = -999999
+		fmt.Println(err)
+		return
 	}
 	defer resp.Body.Close()
 	var buffer [512]byte
@@ -161,7 +175,9 @@ func (e *Executor) GetMemUsage(startFlag bool) {
 		if err != nil && err == io.EOF {
 			break
 		} else if err != nil {
-			panic(err)
+			e.startMemUsage = -999999
+			fmt.Println(err)
+			return
 		}
 	}
 	var data map[string]interface{}
@@ -169,6 +185,14 @@ func (e *Executor) GetMemUsage(startFlag bool) {
 	if err != nil {
 		log.Println(err)
 		e.startCpuUsage = 0
+		return
+	}
+	if len(data["data"].(map[string]interface{})["result"].([]interface{})) == 0 {
+		e.startMemUsage = -9999
+		return
+	}
+	if len(data["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})) == 0 {
+		e.startMemUsage = -9999
 		return
 	}
 	tmpStr := data["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string)
@@ -330,6 +354,7 @@ func (e *Executor) taskScheduling(componentId string) {
 				e.finishedComponentsCnt++
 				e.lock.Unlock()
 				if e.finishedComponentsCnt == len(e.components) {
+					log.Println("task finished:",e.id)
 					e.SetEndTime(time.Now())
 					e.saveTaskExecLog()
 					e.status = 2
