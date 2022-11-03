@@ -32,17 +32,30 @@ type TaskData struct {
 	ScheduleType int       `orm:"column(schedule_type)"`
 }
 
+type NodeInfo struct {
+	TaskNum int
+	DataNum int
+}
+
 func (t *TaskData) TableName() string {
 	return "task"
 }
 
 var pollNum int
 var lock sync.Mutex
+var node1DataNum int
+var node2DataNum int
+var node3DataNum int
+var node4DataNum int
 
 func init() {
 	orm.RegisterModel(new(TaskData))
 	pollNum = 0
 	lock = sync.Mutex{}
+	node1DataNum = 0
+	node2DataNum = 0
+	node3DataNum = 0
+	node4DataNum = 0
 }
 
 // AddTaskData insert a new TaskData into database and returns
@@ -195,7 +208,10 @@ func Run(taskData *TaskData) (id string, err error) {
 	if err != nil {
 		return "", err
 	}
+	lock := executor.GetLock()
+	lock.Lock()
 	(*exectors)[exec.GetId()] = exec
+	lock.Unlock()
 	exec.Run()
 	return exec.GetId(), nil
 }
@@ -257,8 +273,10 @@ func Poll(taskData *TaskData) {
 func GetCpuUsage(node string) float64 {
 	client := &http.Client{Timeout: 5 * time.Second}
 	url := "http://192.168.102.21:30351/api/v1/query?" +
-		"query=sum(rate(container_cpu_usage_seconds_total{node=\"" + node + "\"}[1m]))" +
-		"/sum(machine_cpu_cores{node=\"" + node + "\"})"
+		"query=100 * (1 - sum by (instance)(increase(" +
+		"node_cpu_seconds_total{instance=\"" + node + "\"," +
+		"mode=\"idle\"}[1m])) / sum by (instance)(increase" +
+		"(node_cpu_seconds_total{instance=\"" + node + "\"}[1m])))"
 	resp, err := client.Get(url)
 	if err != nil {
 		log.Println(err)
@@ -294,19 +312,22 @@ func GetCpuUsage(node string) float64 {
 }
 
 func Greedy(taskData *TaskData) {
-	k8sNode1Cpu := GetCpuUsage("k8s-node1")
-	k8sNode2Cpu := GetCpuUsage("k8s-node2")
-	k8sNode3Cpu := GetCpuUsage("k8s-node3")
-	k8sNode4Cpu := GetCpuUsage("k8s-node4")
-	if k8sNode1Cpu < k8sNode2Cpu && k8sNode1Cpu < k8sNode3Cpu && k8sNode1Cpu < k8sNode4Cpu {
+	lock.Lock()
+	if node1DataNum <= node2DataNum && node1DataNum <= node3DataNum && node1DataNum <= node4DataNum {
 		taskData.ExecMechine = "k8s-node1"
-	} else if k8sNode2Cpu < k8sNode1Cpu && k8sNode2Cpu < k8sNode3Cpu && k8sNode2Cpu < k8sNode4Cpu {
+		node1DataNum += taskData.DataNum
+	} else if node2DataNum <= node1DataNum && node2DataNum <= node3DataNum && node2DataNum <= node4DataNum {
 		taskData.ExecMechine = "k8s-node2"
-	} else if k8sNode3Cpu < k8sNode1Cpu && k8sNode3Cpu < k8sNode2Cpu && k8sNode3Cpu < k8sNode4Cpu {
+		node2DataNum += taskData.DataNum
+	} else if node3DataNum <= node1DataNum && node3DataNum <= node2DataNum && node3DataNum <= node4DataNum {
 		taskData.ExecMechine = "k8s-node3"
-	} else {
+		node3DataNum += taskData.DataNum
+	} else if node4DataNum <= node1DataNum && node4DataNum <= node2DataNum && node4DataNum <= node3DataNum {
 		taskData.ExecMechine = "k8s-node4"
+		node4DataNum += taskData.DataNum
 	}
+	lock.Unlock()
+	fmt.Println(node1DataNum, node2DataNum, node3DataNum, node4DataNum)
 	url := "http://192.168.102.21:"
 	if taskData.ExecMechine == "k8s-node1" {
 		url += "30081"
@@ -323,6 +344,7 @@ func Greedy(taskData *TaskData) {
 		"application/json;charset=utf-8", bytes.NewBuffer([]byte(bytesData)))
 	if err != nil {
 		fmt.Println("Fatal error ", err.Error())
+		return
 	}
 	defer res.Body.Close()
 	content, err := ioutil.ReadAll(res.Body)
@@ -331,4 +353,14 @@ func Greedy(taskData *TaskData) {
 	}
 	str := (*string)(unsafe.Pointer(&content)) //转化为string,优化内存
 	fmt.Println(*str)
+}
+
+func GetNodeInfo() *NodeInfo {
+	executors := executor.GetExecutors()
+	var n NodeInfo
+	for _, v := range *executors {
+		n.DataNum += v.DataNum
+		n.TaskNum += 1
+	}
+	return &n
 }

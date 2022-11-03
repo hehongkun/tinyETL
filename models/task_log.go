@@ -11,19 +11,22 @@ import (
 )
 
 type TaskLog struct {
-	TaskId        string    `orm:"column(task_id);size(255);pk"`
-	StartTime     time.Time `orm:"column(start_time);type(timestamp);null"`
-	EndTime       time.Time `orm:"column(end_time);type(timestamp);null"`
-	ExecTime      int64     `orm:"column(exec_time);null"`
-	UserId        string    `orm:"column(user_id);size(255);null"`
-	ExecMechine   string    `orm:"column(exec_mechine);size(255);null"`
-	ExecNode      string    `orm:"column(exec_node);size(255);null"`
-	StartCpuUsage float64   `orm:"column(start_cpu_usage);null"`
-	EndCpuUsage   float64   `orm:"column(end_cpu_usage);null"`
-	StartMemUsage float64   `orm:"column(start_mem_usage);null"`
-	EndMemUsage   float64   `orm:"column(end_mem_usage);null"`
-	ComponentNum  int       `orm:"column(component_num);null"`
-	DataNum       int       `orm:"column(data_num);null"`
+	TaskId               string    `orm:"column(task_id);size(255);pk"`
+	StartTime            time.Time `orm:"column(start_time);type(timestamp);null"`
+	EndTime              time.Time `orm:"column(end_time);type(timestamp);null"`
+	ExecTime             int64     `orm:"column(exec_time);null"`
+	UserId               string    `orm:"column(user_id);size(255);null"`
+	ExecMechine          string    `orm:"column(exec_mechine);size(255);null"`
+	ExecNode             string    `orm:"column(exec_node);size(255);null"`
+	StartCpuUsage        float64   `orm:"column(start_cpu_usage);null"`
+	EndCpuUsage          float64   `orm:"column(end_cpu_usage);null"`
+	StartMemUsage        float64   `orm:"column(start_mem_usage);null"`
+	EndMemUsage          float64   `orm:"column(end_mem_usage);null"`
+	ComponentNum         int       `orm:"column(component_num);null"`
+	DataNum              int       `orm:"column(data_num);null"`
+	CurrNodeDataCnt      int       `orm:"column(curr_node_data_cnt);null"`
+	CurrNodeComponentCnt int       `orm:"column(curr_node_component_cnt);null"`
+	CurrNodeTaskCnt      int       `orm:"column(curr_node_task_cnt);null"`
 }
 
 func (t *TaskLog) TableName() string {

@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"tinyETL/models"
@@ -26,6 +27,7 @@ func (c *TaskDataController) URLMapping() {
 	c.Mapping("Delete", c.Delete)
 	c.Mapping("Run", c.Run)
 	c.Mapping("Schedule", c.Schedule)
+	c.Mapping("GetNodeInfo", c.GetNodeInfo)
 }
 
 // Post ...
@@ -174,7 +176,7 @@ func (c *TaskDataController) GetAll() {
 // @Param	body		body 	models.TaskData	true		"body for TaskData content"
 // @Success 200 {object} models.TaskData
 // @Failure 403 :id is not int
-// @router /edittask:id [put]
+// @router /edittask/:id [put]
 func (c *TaskDataController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
@@ -236,6 +238,8 @@ func (c *TaskDataController) Run() {
 			ret["success"] = false
 			c.Data["json"] = ret
 		}
+	}else{
+		log.Println(err)
 	}
 	c.ServeJSON()
 }
@@ -262,5 +266,20 @@ func (c *TaskDataController) Schedule() {
 			c.Data["json"] = ret
 		}
 	}
+	c.ServeJSON()
+}
+
+
+
+
+// GetAllTaskList ...
+// @Title Get All Task Of a User
+// @Description get TaskData
+// @Success 200 {object} models.NodeInfo
+// @Failure 403
+// @router /GetNodeInfo [get]
+func (c *TaskDataController) GetNodeInfo() {
+	v := models.GetNodeInfo()
+	c.Data["json"] = v
 	c.ServeJSON()
 }

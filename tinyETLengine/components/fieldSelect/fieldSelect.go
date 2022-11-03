@@ -1,9 +1,9 @@
 package fieldSelect
 
 import (
+	"time"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/components/utils"
-	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type selectField struct {
@@ -17,8 +17,10 @@ type fieldSelect struct {
 }
 
 
-func (f *fieldSelect)Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (f *fieldSelect)Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
+	f.SetStartTime()
 	defer close(*outdata)
+	defer f.SetEndTime()
 	f.DataMeta = make(map[string]map[string]interface{})
 	for _,field := range f.selectFields {
 		f.DataMeta[field.destField] = map[string]interface{}{
@@ -27,13 +29,21 @@ func (f *fieldSelect)Run(indata *chan interface{}, outdata *chan interface{}, da
 			"format": datameta[field.srcField]["format"],
 		}
 	}
+	f.SetStatus(1)
 	tmpDataMeta:= utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	for {
-		vaule, ok := <-*indata
+		dataBatch, ok := <-*indata
+		f.StartTime = time.Now()
 		if !ok {
 			break
 		}
-		*outdata <- f.processRow(vaule.([]interface{}),tmpDataMeta)
+		f.ReadCnt += len(dataBatch.([][]interface{}))
+		data := make([][]interface{}, 0)
+		for _,value := range dataBatch.([][]interface{}) {
+			data = append(data, f.processRow(value, tmpDataMeta))
+		}
+		*outdata <- data
+		f.WriteCnt += len(data)
 	}
 }
 
@@ -55,9 +65,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "fieldSelect",
 			Status: 0,
+			ChanNum: 1,
 		},
 	}
-	f.Id,_ = untilId.GenerateUUID()
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		f.selectFields = append(f.selectFields, selectField{
 			srcField:  field.(map[string]interface{})["srcField"].(string),

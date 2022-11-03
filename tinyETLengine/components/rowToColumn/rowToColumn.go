@@ -2,7 +2,6 @@ package rowToColumn
 
 import (
 	"tinyETL/tinyETLengine/components/abstractComponents"
-	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type aimField struct {
@@ -19,7 +18,7 @@ type rowToColumn struct {
 	abstractComponents.AbstractComponent
 }
 
-func (r *rowToColumn)Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (r *rowToColumn)Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	defer close(*outdata)
 	r.SetStartTime()
 	defer r.SetEndTime()
@@ -39,22 +38,27 @@ func (r *rowToColumn)Run(indata *chan interface{}, outdata *chan interface{}, da
 		"type":   datameta[r.aimFields[0].valueField]["type"],
 		"format": datameta[r.aimFields[0].valueField]["format"],
 	}
+	r.SetStatus(1)
 	for {
-		value, ok := <-*indata
+		databBatch, ok := <-*indata
 		if !ok {
 			break
 		}
 		r.ReadCnt++
-		for i, _ := range r.aimFields {
-			tmpData := make([]interface{}, 3)
-			if _,ok := datameta[r.aimFields[i].fieldName]; ok {
-				tmpData[r.DataMeta[r.keyField]["index"].(int)] = value.([]interface{})[datameta[r.keyField]["index"].(int)]
-				tmpData[r.DataMeta[r.transformField]["index"].(int)] = r.aimFields[i].keyValue
-				tmpData[r.DataMeta[r.aimFields[i].valueField]["index"].(int)] = value.([]interface{})[datameta[r.aimFields[i].fieldName]["index"].(int)]
-				*outdata <- tmpData
-				r.WriteCnt++
+		data := make([][]interface{}, 0)
+		for _, value := range databBatch.([][]interface{}) {
+			for i, _ := range r.aimFields {
+				tmpData := make([]interface{}, 3)
+				if _,ok := datameta[r.aimFields[i].fieldName]; ok {
+					tmpData[r.DataMeta[r.keyField]["index"].(int)] = value[datameta[r.keyField]["index"].(int)]
+					tmpData[r.DataMeta[r.transformField]["index"].(int)] = r.aimFields[i].keyValue
+					tmpData[r.DataMeta[r.aimFields[i].valueField]["index"].(int)] = value[datameta[r.aimFields[i].fieldName]["index"].(int)]
+					data = append(data, tmpData)
+					r.WriteCnt++
+				}
 			}
 		}
+		*outdata <- data
 	}
 }
 
@@ -70,9 +74,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name: "rowToColumn",
 			Status: 0,
+			ChanNum: 1,
 		},
 	}
-	r.Id,_ = untilId.GenerateUUID()
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		r.aimFields = append(r.aimFields, aimField{
 			fieldName: field.(map[string]interface{})["fieldName"].(string),

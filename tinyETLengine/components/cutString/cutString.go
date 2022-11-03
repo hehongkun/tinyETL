@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/components/utils"
-	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type stringCutField struct {
@@ -20,7 +19,7 @@ type cutString struct {
 	abstractComponents.AbstractComponent
 }
 
-func (c *cutString) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (c *cutString) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	c.SetStartTime()
 	defer close(*outdata)
 	defer c.SetEndTime()
@@ -34,20 +33,27 @@ func (c *cutString) Run(indata *chan interface{}, outdata *chan interface{}, dat
 		}
 	}
 	c.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
+	c.SetStatus(1)
 	for {
-		vaule, ok := <-*indata
+		dataBatch, ok := <-*indata
 		if !ok {
 			break
 		}
-		c.ReadCnt++
-		for _, field := range c.fields {
-			if field.outputField == "" {
-				field.outputField = field.inputField
+		c.ReadCnt += len(dataBatch.([][]interface{}))
+		data := make([][]interface{}, 0)
+		for _, value := range dataBatch.([][]interface{}) {
+			for _, field := range c.fields {
+				if field.outputField == "" {
+					field.outputField = field.inputField
+				} else if value[datameta[field.inputField]["index"].(int)] == nil {
+					data = append(data, value)
+					continue
+				}
+				data = append(data, processRow(value, datameta[field.inputField]["index"].(int), datameta[field.outputField]["index"].(int), field.startPos, field.endPos).([]interface{}))
 			}
-			vaule = processRow(vaule, datameta[field.inputField]["index"].(int), datameta[field.outputField]["index"].(int), field.startPos, field.endPos)
 		}
-		*outdata <- vaule
-		c.WriteCnt++
+		*outdata <- data
+		c.WriteCnt += len(data)
 	}
 }
 
@@ -71,10 +77,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "cutString",
 			Status: 0,
+			ChanNum: 1,
 		},
 	}
-	c.Id,_ = untilId.GenerateUUID()
-
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		s, err := strconv.Atoi(field.(map[string]interface{})["startPos"].(string))
 		if err != nil {

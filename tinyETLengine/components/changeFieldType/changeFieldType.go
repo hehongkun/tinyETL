@@ -2,12 +2,10 @@ package changeFieldType
 
 import (
 	"log"
-	"reflect"
 	"strconv"
 	"time"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/components/utils"
-	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type dstFieldType struct {
@@ -21,7 +19,7 @@ type changeFieldType struct {
 	abstractComponents.AbstractComponent
 }
 
-func (c *changeFieldType) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (c *changeFieldType) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	c.SetStartTime()
 	defer close(*outdata)
 	defer c.SetEndTime()
@@ -30,14 +28,24 @@ func (c *changeFieldType) Run(indata *chan interface{}, outdata *chan interface{
 		c.DataMeta[dstFieldType.fieldName]["type"] = dstFieldType.fieldType
 		c.DataMeta[dstFieldType.fieldName]["format"] = dstFieldType.fieldFormat
 	}
+	c.SetStatus(1)
 	tmpDataMeta := utils.DeepCopy(datameta).(map[string]map[string]interface{})
+	rowBatch := make([][]interface{}, 0)
 	for {
-		data, ok := <-*indata
+		dataBatch, ok := <-*indata
 		if !ok {
 			break
 		}
-		res := c.processRow(data, tmpDataMeta, c.dstFieldTypes)
-		*outdata <- res
+		for _, data := range dataBatch.([][]interface{}) {
+			rowBatch = append(rowBatch, c.processRow(data, tmpDataMeta, c.dstFieldTypes).([]interface{}))
+		}
+		if len(rowBatch) >= 1000 {
+			*outdata <- rowBatch
+			rowBatch = make([][]interface{}, 0)
+		}
+	}
+	if len(rowBatch) > 0 {
+		*outdata <- rowBatch
 	}
 }
 
@@ -46,8 +54,11 @@ func (c *changeFieldType)processRow(data interface{}, srcDatameta map[string]map
 	var err error
 	for _, dstFieldType := range dstFiledTypes {
 		colIdx := srcDatameta[dstFieldType.fieldName]["index"].(int)
-		srcColType := reflect.TypeOf(row[colIdx]).Name()
-		if dstFieldType.fieldType == srcColType {
+		srcColType := srcDatameta[dstFieldType.fieldName]["type"].(string)
+		if row[colIdx] == nil {
+			continue
+		}
+		if dstFieldType.fieldType == srcColType && dstFieldType.fieldFormat == srcDatameta[dstFieldType.fieldName]["format"].(string) {
 			continue
 		}
 		if dstFieldType.fieldType == "string" {
@@ -136,6 +147,14 @@ func (c *changeFieldType)processRow(data interface{}, srcDatameta map[string]map
 				row[colIdx] = time.Unix(int64(row[colIdx].(int)), 0)
 			} else if srcColType == "float" {
 				row[colIdx] = time.Unix(int64(row[colIdx].(float64)), 0)
+			} else if srcColType == "time" {
+				if dstFieldType.fieldFormat == "YYYY-MM-DD HH:MM:SS" {
+					row[colIdx],_ = time.Parse("2006-01-02 15:04:05",row[colIdx].(time.Time).Format("2006-01-02 15:04:05"))
+				} else if dstFieldType.fieldFormat == "YYYY-MM-DD" {
+					row[colIdx],_ = time.Parse("2006-01-02",row[colIdx].(time.Time).Format("2006-01-02"))
+				} else {
+					row[colIdx],_ = time.Parse("2006-01-02 03:04:05",row[colIdx].(time.Time).Format("2006-01-02 03:04:05"))
+				}
 			} else if srcColType == "interface" {
 				row[colIdx] = time.Time(row[colIdx].(time.Time))
 			} else if srcColType == "[]uint8" {
@@ -160,10 +179,10 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name: "ChangeFieldType",
 			Status: 0,
+			ChanNum: 1,
 		},
 		dstFieldTypes: []dstFieldType{},
 	}
-	c.Id,_ = untilId.GenerateUUID()
 	for _, v := range params["fields"].([]interface{}) {
 		dstFieldType := dstFieldType{
 			fieldName:   v.(map[string]interface{})["src"].(string),

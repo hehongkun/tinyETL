@@ -5,7 +5,7 @@ import "time"
 type VirtualComponents interface {
 	SetId(id string)
 	GetId() string
-	Run(indata *chan interface{},outdata *chan interface{},datameta map[string]map[string]interface{})
+	Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{})
 	GetDataMeta()  map[string]map[string]interface{}
 	SetDataMeta(dataMeta map[string]map[string]interface{})
 	SetStartTime()
@@ -16,4 +16,7 @@ type VirtualComponents interface {
 	SetName(name string)
 	SetStatus(status int)
 	GetStatus() int
+	GetChanNum() int
+	GetFirstInNode() string
+	GetSecondInNode() string
 }

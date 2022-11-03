@@ -54,6 +54,15 @@ func init() {
 
     beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
         beego.ControllerComments{
+            Method: "GetNodeInfo",
+            Router: "/GetNodeInfo",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
             Method: "Post",
             Router: "/add",
             AllowHTTPMethods: []string{"post"},
@@ -73,7 +82,7 @@ func init() {
     beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
         beego.ControllerComments{
             Method: "Put",
-            Router: "/edittask:id",
+            Router: "/edittask/:id",
             AllowHTTPMethods: []string{"put"},
             MethodParams: param.Make(),
             Filters: nil,

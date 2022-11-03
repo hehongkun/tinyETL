@@ -4,7 +4,6 @@ import (
 	"math"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/components/utils"
-	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type aimField struct {
@@ -21,7 +20,7 @@ type columnToRow struct {
 	abstractComponents.AbstractComponent
 }
 
-func (c *columnToRow) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (c *columnToRow) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	c.SetStartTime()
 	defer close(*outdata)
 	defer c.SetEndTime()
@@ -45,19 +44,25 @@ func (c *columnToRow) Run(indata *chan interface{}, outdata *chan interface{}, d
 			c.DataMeta[aimField.targetField]["format"] = ""
 		}
 	}
-	data := make([][]interface{}, 0)
 	delete(c.DataMeta, c.keyField)
+	c.SetStatus(1)
 	for {
-		vaule, ok := <-*indata
+		dataBatch, ok := <-*indata
 		if !ok {
 			break
 		}
-		c.ReadCnt++
-		c.processRow(vaule.([]interface{}), &data, datameta)
-	}
-	for _, row := range data {
-		*outdata <- row
-		c.WriteCnt++
+		c.ReadCnt += len(dataBatch.([][]interface{}))
+		data := make([][]interface{}, 0)
+		for _,value := range dataBatch.([][]interface{}) {
+			if value[datameta[c.keyField]["index"].(int)] == nil {
+				continue
+			} else if value[datameta[c.keyField]["index"].(int)] == nil {
+				continue
+			}
+			c.processRow(value, &data, datameta)
+		}
+		c.WriteCnt += len(data)
+		*outdata <- data
 	}
 }
 
@@ -130,9 +135,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "columnToRow",
 			Status: 0,
+			ChanNum: 1,
 		},
 	}
-	c.Id,_ = untilId.GenerateUUID()
 	for _, field := range parameters.(map[string]interface{})["groupByFields"].([]interface{}) {
 		c.groupByFields = append(c.groupByFields, field.(map[string]interface{})["groupByField"].(string))
 	}

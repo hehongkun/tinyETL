@@ -13,7 +13,7 @@ type ValueMapping struct {
 	abstractComponents.AbstractComponent
 }
 
-func (v *ValueMapping) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (v *ValueMapping) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	v.SetStartTime()
 	defer close(*outdata)
 	defer v.SetEndTime()
@@ -27,14 +27,19 @@ func (v *ValueMapping) Run(indata *chan interface{}, outdata *chan interface{}, 
 		}
 	}
 	v.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
+	v.SetStatus(1)
 	for {
-		value, ok := <-*indata
+		dataBatch, ok := <-*indata
 		if !ok {
 			break
 		}
-		v.ReadCnt++
-		*outdata <- processRow(value, v.mappings, v.defaultValue, datameta[v.srcField]["index"].(int), datameta[v.dstField]["index"].(int))
-		v.WriteCnt++
+		v.ReadCnt += len(dataBatch.([][]interface{}))
+		data := make([][]interface{}, 0)
+		for _, value := range dataBatch.([][]interface{}) {
+			data = append(data, processRow(value, v.mappings, v.defaultValue, datameta[v.srcField]["index"].(int), datameta[v.dstField]["index"].(int)).([]interface{}))
+			v.WriteCnt++
+		}
+		*outdata <- data
 	}
 }
 
@@ -71,7 +76,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			Id:       id,
 			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "ValueMapping",
+			Status: 1,
+			Name: "valueMapping",
+			ChanNum: 1,
 		},
 	}
 	for _, m := range parameters.(map[string]interface{})["mappings"].([]interface{}) {

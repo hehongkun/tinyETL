@@ -5,7 +5,6 @@ import (
 	"log"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/components/utils"
-	untilId "tinyETL/tinyETLengine/utils"
 )
 
 type fieldMapping struct {
@@ -24,55 +23,60 @@ type mysqlOutput struct {
 	abstractComponents.AbstractComponent
 }
 
-func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}) {
+func (m *mysqlOutput) GetBatchInsertSql(dataBatchArg *interface{}) (string, []interface{}) {
+	dataBatch := (*dataBatchArg).([][]interface{})
+	sql := "insert into " + m.table + " ("
+	for idx, v := range m.fieldMappings {
+		sql += v.dstField
+		if idx != len(m.fieldMappings)-1 {
+			sql += ","
+		}
+	}
+	vals := make([]interface{}, len(dataBatch)*len(m.fieldMappings))
+	sql += ") values "
+	for idx, data := range dataBatch {
+		sql += "("
+		for idx1, v := range m.fieldMappings {
+			sql += "?"
+			if idx1 != len(m.fieldMappings)-1 {
+				sql += ","
+			}
+			vals[idx*len(m.fieldMappings)+idx1] = data[m.DataMeta[v.srcField]["index"].(int)]
+		}
+		sql += ")"
+		if idx != len(dataBatch)-1 {
+			sql += ","
+		}
+	}
+	return sql, vals
+}
+
+
+func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	m.SetStartTime()
 	defer close(*outdata)
 	defer m.SetEndTime()
-	var s string
-	var stmt *sql.Stmt
-	var err error
-	s = "INSERT INTO " + m.table + " ("
-	for _, v := range m.fieldMappings {
-		s += v.dstField + ","
-	}
-	s = s[:len(s)-1] + ") VALUES ("
-	for _ = range m.fieldMappings {
-		s += "?,"
-	}
-	s = s[:len(s)-1] + ")"
-	flag := true
+	m.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
+	m.SetStatus(1)
+	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(db)
 	for {
-		value, ok := <-*indata
+		dataBatch, ok := <-*indata
 		if !ok {
 			break
 		}
-		if flag {
-			m.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
-			db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
-			defer func(db *sql.DB) {
-				err := db.Close()
-				if err != nil {
-					log.Println(err)
-				}
-			}(db)
-			stmt, err = db.Prepare(s)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			flag = false
+		if len(dataBatch.([][]interface{})) == 0 {
+			continue
 		}
-		values := []interface{}{}
-		for _, v := range m.fieldMappings {
-			if value.([]interface{})[datameta[v.srcField]["index"].(int)] == nil {
-				values = append(values, "")
-			} else {
-				values = append(values, value.([]interface{})[datameta[v.srcField]["index"].(int)])
-			}
-		}
-		_, err = stmt.Exec(values...)
+		batchInsertSql, vals := m.GetBatchInsertSql(&(dataBatch))
+		_, err := db.Exec(batchInsertSql,vals...)
 		if err != nil {
-			log.Println("mysqlOutput:" + err.Error())
+			log.Println(err)
 		}
 	}
 }
@@ -93,9 +97,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "mysqlOutput",
 			Status:   0,
+			ChanNum: 1,
 		},
 	}
-	m.Id, _ = untilId.GenerateUUID()
 	for _, v := range params["fieldMappings"].([]interface{}) {
 		m.fieldMappings = append(m.fieldMappings, fieldMapping{
 			srcField: v.(map[string]interface{})["srcField"].(string),

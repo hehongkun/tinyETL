@@ -41,3 +41,12 @@ func CheckLess(a interface{}, b interface{}, dataType string) bool {
 		return false
 	}
 }
+
+func CheckContains(a []interface{},b interface{}) bool {
+	for _,val := range a {
+		if val == b {
+			return true
+		}
+	}
+	return false
+}
