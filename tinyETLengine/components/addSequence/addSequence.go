@@ -59,7 +59,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "AddSequence",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		field: parameters.(map[string]interface{})["field"].(string),
 	}

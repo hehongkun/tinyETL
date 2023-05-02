@@ -34,7 +34,7 @@ func (f *FillNum) Run(indata *chan interface{}, outdata *chan interface{}, datam
 		f.ReadCnt += len(dataBatch.([][]interface{}))
 
 		for _, value := range dataBatch.([][]interface{}) {
-			f.processRow(&value, f.fields, &data, &fillData,&valueRecord,&cntRecord)
+			f.processRow(&value, f.fields, &data, &fillData, &valueRecord, &cntRecord)
 		}
 		if len(data) >= 1000 {
 			*outdata <- data
@@ -47,24 +47,35 @@ func (f *FillNum) Run(indata *chan interface{}, outdata *chan interface{}, datam
 		f.WriteCnt += len(data)
 	}
 	if len(fillData) > 0 {
-		f.fillNilData(&fillData,&valueRecord,&cntRecord)
-		*outdata <- fillData
-		f.WriteCnt += len(fillData)
+		f.fillNilData(&fillData, &valueRecord, &cntRecord)
+		for len(fillData) > 0 {
+			if len(fillData) > 1000 {
+				*outdata <- fillData[:1000]
+				f.WriteCnt += len(fillData[:1000])
+			} else {
+				*outdata <- fillData
+				f.WriteCnt += len(fillData)
+			}
+			if len(fillData) > 1000 {
+				fillData = fillData[1000:]
+			} else {
+				fillData = make([][]interface{}, 0)
+			}
+		}
 	}
 }
 
-
-func (f *FillNum)fillNilData(fillData *[][]interface{},valueRecord *[]interface{},cntRecord *[]int64) {
-	for _,data := range *fillData {
-		for idx,field := range f.fields {
+func (f *FillNum) fillNilData(fillData *[][]interface{}, valueRecord *[]interface{}, cntRecord *[]int64) {
+	for _, data := range *fillData {
+		for idx, field := range f.fields {
 			if data[f.DataMeta[field.field]["index"].(int)] == nil {
 				if field.fillType == "mean" {
 					if f.DataMeta[field.field]["type"].(string) == "int" {
-						data[f.DataMeta[field.field]["index"].(int)] = int((*valueRecord)[idx].(int64)/(*cntRecord)[idx])
+						data[f.DataMeta[field.field]["index"].(int)] = int((*valueRecord)[idx].(int64) / (*cntRecord)[idx])
 					} else if f.DataMeta[field.field]["type"].(string) == "float" {
-						data[f.DataMeta[field.field]["index"].(int)] = (*valueRecord)[idx].(float64)/float64((*cntRecord)[idx])
+						data[f.DataMeta[field.field]["index"].(int)] = (*valueRecord)[idx].(float64) / float64((*cntRecord)[idx])
 					}
-				}else{
+				} else {
 					data[f.DataMeta[field.field]["index"].(int)] = (*valueRecord)[idx]
 				}
 			}
@@ -72,7 +83,7 @@ func (f *FillNum)fillNilData(fillData *[][]interface{},valueRecord *[]interface{
 	}
 }
 
-func (f *FillNum)processRow(value *[]interface{}, fields []fillNumField,data *[][]interface{},fillData *[][]interface{},valueRecord *[]interface{},cntRecord *[]int64) {
+func (f *FillNum) processRow(value *[]interface{}, fields []fillNumField, data *[][]interface{}, fillData *[][]interface{}, valueRecord *[]interface{}, cntRecord *[]int64) {
 	flag := false
 	for index, field := range fields {
 		if (*value)[f.DataMeta[field.field]["index"].(int)] == nil {
@@ -92,7 +103,7 @@ func (f *FillNum)processRow(value *[]interface{}, fields []fillNumField,data *[]
 						}
 					}
 				}
-			}else if field.fillType == "min" {
+			} else if field.fillType == "min" {
 				if (*valueRecord)[index] == nil {
 					(*valueRecord)[index] = (*value)[f.DataMeta[field.field]["index"].(int)]
 				} else {
@@ -106,7 +117,7 @@ func (f *FillNum)processRow(value *[]interface{}, fields []fillNumField,data *[]
 						}
 					}
 				}
-			}else if field.fillType == "mean" {
+			} else if field.fillType == "mean" {
 				if f.DataMeta[field.field]["type"].(string) == "int" {
 					if (*valueRecord)[index] == nil {
 						(*valueRecord)[index] = int64(0)
@@ -122,10 +133,10 @@ func (f *FillNum)processRow(value *[]interface{}, fields []fillNumField,data *[]
 				}
 			} else if field.fillType == "constant" {
 				if f.DataMeta[field.field]["type"].(string) == "int" {
-					val,_ := strconv.ParseInt(field.value, 10, 64)
+					val, _ := strconv.ParseInt(field.value, 10, 64)
 					(*valueRecord)[index] = val
 				} else if f.DataMeta[field.field]["type"].(string) == "float" {
-					val,_ := strconv.ParseFloat(field.value, 64)
+					val, _ := strconv.ParseFloat(field.value, 64)
 					(*valueRecord)[index] = val
 				}
 			}
@@ -138,16 +149,15 @@ func (f *FillNum)processRow(value *[]interface{}, fields []fillNumField,data *[]
 	}
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	f := &FillNum{
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "FillNum",
-			Status: 0,
-			ChanNum: 1,
+			Name:     "FillNum",
+			Status:   0,
+			ChanNum:  1,
 		},
 		fields: make([]fillNumField, 0),
 	}

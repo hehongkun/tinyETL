@@ -2,6 +2,7 @@ package mysqlInput
 
 import (
 	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"strconv"
 	"time"
@@ -19,28 +20,24 @@ type mysqlInput struct {
 	abstractComponents.AbstractComponent
 }
 
+func (m *mysqlInput) equal(m1 mysqlInput) bool {
+	if m.database == m1.database && m.host == m1.host && m.port == m1.port {
+		return true
+	}
+	return false
+}
+
 func (m *mysqlInput) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	m.SetStartTime()
 	defer close(*outdata)
 	defer m.SetEndTime()
 	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(db)
+	db.SetConnMaxLifetime(time.Second * 600)
 	rows, err := db.Query(m.sql)
 	if err != nil {
 		log.Fatalln(err)
 		return
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(rows)
 	cols, err := rows.Columns()
 	if err != nil {
 		log.Fatalln(err)
@@ -61,17 +58,17 @@ func (m *mysqlInput) Run(indata *chan interface{}, outdata *chan interface{}, da
 		}
 		row := make([]interface{}, len(cols))
 		for idx, v := range values {
-			if v == nil{
+			if v == nil {
 				row[idx] = nil
 			} else {
 				if m.DataMeta[cols[idx]]["type"] == "int" {
 					row[idx], _ = strconv.ParseInt(string(v.([]byte)), 10, 64)
-				}else if m.DataMeta[cols[idx]]["type"] == "float" {
+				} else if m.DataMeta[cols[idx]]["type"] == "float" {
 					row[idx], _ = strconv.ParseFloat(string(v.([]byte)), 64)
-				}else if m.DataMeta[cols[idx]]["type"] == "time" {
+				} else if m.DataMeta[cols[idx]]["type"] == "time" {
 					if m.DataMeta[cols[idx]]["format"] == "YYYY-MM-DD HH:MM:SS" {
 						row[idx], _ = time.Parse("2006-01-02 15:04:05", string(v.([]byte)))
-					}else if m.DataMeta[cols[idx]]["format"] == "YYYY-MM-DD" {
+					} else if m.DataMeta[cols[idx]]["format"] == "YYYY-MM-DD" {
 						row[idx], _ = time.Parse("2006-01-02", string(v.([]byte)))
 					} else {
 						row[idx], _ = time.Parse("2006-01-02 03:04:05", string(v.([]byte)))
@@ -90,13 +87,20 @@ func (m *mysqlInput) Run(indata *chan interface{}, outdata *chan interface{}, da
 	if len(rowBatch) > 0 {
 		*outdata <- rowBatch
 	}
+	err = rows.Close()
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.Close()
+	if err != nil {
+		log.Println(err)
+	}
 }
-
 
 func (m *mysqlInput) setDataMeta(db sql.DB, cols []string) {
 	m.DataMeta = make(map[string]map[string]interface{})
-	dataMetaSql := "select column_name, data_type from information_schema.columns where table_name = ?"
-	rows, err := db.Query(dataMetaSql, m.table)
+	dataMetaSql := "select column_name, data_type from information_schema.columns where TABLE_NAME = ? AND TABLE_SCHEMA = ?"
+	rows, err := db.Query(dataMetaSql, m.table, m.database)
 	if err != nil {
 		log.Println(err)
 		return
@@ -119,13 +123,13 @@ func (m *mysqlInput) setDataMeta(db sql.DB, cols []string) {
 		} else if dataType == "decimal" {
 			m.DataMeta[columnName]["type"] = "float"
 			m.DataMeta[columnName]["format"] = ""
-		}else if dataType == "bigint" {
+		} else if dataType == "bigint" {
 			m.DataMeta[columnName]["type"] = "int"
 			m.DataMeta[columnName]["format"] = ""
 		} else if dataType == "integer" {
 			m.DataMeta[columnName]["type"] = "int"
 			m.DataMeta[columnName]["format"] = ""
-		}else if dataType == "datetime" {
+		} else if dataType == "datetime" {
 			m.DataMeta[columnName]["type"] = "time"
 			m.DataMeta[columnName]["format"] = "YYYY-MM-DD HH:MM:SS"
 		} else if dataType == "date" {
@@ -164,15 +168,15 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 		host:     params["host"].(string),
 		port:     params["port"].(string),
 		database: params["database"].(string),
-		table: params["table"].(string),
+		table:    params["table"].(string),
 		sql:      params["sql"].(string),
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "mysqlInput",
-			Status: 0,
-			ChanNum: 1,
+			Name:     "mysqlInput",
+			Status:   0,
+			ChanNum:  1,
 		},
 	}
 	m.SetName("mysqlInput")

@@ -1,8 +1,6 @@
 package leftJoin
 
 import (
-	"log"
-	"os"
 	"sync"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/utils"
@@ -20,19 +18,16 @@ type LeftJoin struct {
 	fields []joinFields
 }
 
-func DumpData(group *sync.WaitGroup, indata *chan interface{}, filename string, length *int) {
+func DumpData(group *sync.WaitGroup, indata *chan interface{}, data *[][]interface{}) {
 	defer group.Done()
 	for {
-		data, ok := <-*indata
+		dataBatch, ok := <-*indata
 		if !ok {
 			break
 		}
-		err := utils.DumpToFile(data.([][]interface{}), filename)
-		if err != nil {
-			log.Println(err)
-			return
+		for _, d := range dataBatch.([][]interface{}) {
+			*data = append(*data, d)
 		}
-		*length += len(data.([][]interface{}))
 	}
 }
 
@@ -40,7 +35,7 @@ func (l *LeftJoin) Run(indata *chan interface{}, outdata *chan interface{}, data
 	l.SetStartTime()
 	defer close(*outdata)
 	defer l.SetEndTime()
-	l.DataMeta = datameta
+	l.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	var datameta1 map[string]map[string]interface{}
 	var indata1 *chan interface{}
 	for _, o := range otherChannels {
@@ -58,13 +53,14 @@ func (l *LeftJoin) Run(indata *chan interface{}, outdata *chan interface{}, data
 				if !flag {
 					if _, ok := l.DataMeta[key]; !ok {
 						l.DataMeta[key] = value
+						l.DataMeta[key]["index"] = len(l.DataMeta) - 1
 					} else {
 						datameta1[key+"_1"] = value
 						l.DataMeta[key+"_1"] = value
 						delete(datameta1, key)
-						for k,h := range l.fields {
+						for k, h := range l.fields {
 							if h.SecondField == key {
-								l.fields[k].SecondField = key+"_1"
+								l.fields[k].SecondField = key + "_1"
 							}
 						}
 					}
@@ -75,45 +71,17 @@ func (l *LeftJoin) Run(indata *chan interface{}, outdata *chan interface{}, data
 		}
 	}
 	l.SetStatus(1)
-	fIdx := 0
-	fLen := 0
-	sIdx := 0
-	sLen := 0
-	fFileIdx := 0
-	sFileIdx := 0
-	fFilename := utils.RandFileName("")
-	sFilename := utils.RandFileName("")
-	for sFilename == fFilename {
-		sFilename = utils.RandFileName("")
-	}
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(2)
-	go DumpData(&waitGroup, indata, fFilename, &fLen)
-	go DumpData(&waitGroup, indata1, sFilename, &sLen)
-	waitGroup.Wait()
 	fData := make([][]interface{}, 0)
 	sData := make([][]interface{}, 0)
-	var err error
+	go DumpData(&waitGroup, indata, &fData)
+	go DumpData(&waitGroup, indata1, &sData)
+	waitGroup.Wait()
 	oData := make([][]interface{}, 0)
-	for fIdx < fLen {
+	for fIdx := 0; fIdx < len(fData); fIdx++ {
 		joinFlag := true
-		if fFileIdx < fLen {
-			fFileIdx += Min(10000, fLen-fFileIdx)
-			fData, err = utils.LoadFromFile(fFilename, datameta, fIdx, fFileIdx)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
-		for sIdx < sLen {
-			if sFileIdx < sLen {
-				sFileIdx += Min(10000, sLen-sFileIdx)
-				sData, err = utils.LoadFromFile(sFilename, datameta1, sIdx, sFileIdx)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-			}
+		for sIdx := 0; sIdx < len(sData); sIdx++ {
 			flag := true
 			for _, field := range l.fields {
 				if fData[fIdx][datameta[field.FirstField]["index"].(int)] != sData[sIdx][datameta1[field.SecondField]["index"].(int)] {
@@ -126,8 +94,17 @@ func (l *LeftJoin) Run(indata *chan interface{}, outdata *chan interface{}, data
 				for _, value := range datameta {
 					tmpData[value["index"].(int)] = fData[fIdx][value["index"].(int)]
 				}
-				for _, value := range datameta1 {
-					tmpData[value["index"].(int)] = sData[sIdx][value["index"].(int)]
+				for key, value := range datameta1 {
+					secondFieldFlag := true
+					for _, field := range l.fields {
+						if field.SecondField == key {
+							secondFieldFlag = false
+							break
+						}
+					}
+					if secondFieldFlag {
+						tmpData[l.DataMeta[key]["index"].(int)] = sData[sIdx][value["index"].(int)]
+					}
 				}
 				oData = append(oData, tmpData)
 				joinFlag = false
@@ -146,33 +123,11 @@ func (l *LeftJoin) Run(indata *chan interface{}, outdata *chan interface{}, data
 			l.WriteCnt += len(oData)
 			oData = make([][]interface{}, 0)
 		}
-		sIdx = 0
-		sFileIdx = 0
-		fIdx++
 	}
 	if len(oData) > 0 {
 		*outdata <- oData
 		l.WriteCnt += len(oData)
 	}
-	err = os.Remove(fFilename)
-	if err != nil {
-		log.Println("close file err:")
-		log.Println(err)
-		return
-	}
-	err = os.Remove(sFilename)
-	if err != nil {
-		log.Println("close file err:")
-		log.Println(err)
-		return
-	}
-}
-
-func Min(i int, i2 int) int {
-	if i < i2 {
-		return i
-	}
-	return i2
 }
 
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {

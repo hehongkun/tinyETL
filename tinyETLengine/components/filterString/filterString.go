@@ -3,6 +3,7 @@ package filterString
 import (
 	"strings"
 	"tinyETL/tinyETLengine/components/abstractComponents"
+	"tinyETL/tinyETLengine/components/utils"
 )
 
 type filterStringField struct {
@@ -20,7 +21,7 @@ func (f *FilterString) Run(indata *chan interface{}, outdata *chan interface{}, 
 	f.SetStartTime()
 	defer close(*outdata)
 	defer f.SetEndTime()
-	f.DataMeta = datameta
+	f.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	f.SetStatus(1)
 	for {
 		dataBatch, ok := <-*indata
@@ -38,7 +39,6 @@ func (f *FilterString) Run(indata *chan interface{}, outdata *chan interface{}, 
 		f.WriteCnt += len(data)
 	}
 }
-
 
 func processRow(data interface{}, fields []filterStringField, datameta map[string]map[string]interface{}) bool {
 	for _, field := range fields {
@@ -65,16 +65,15 @@ func processRow(data interface{}, fields []filterStringField, datameta map[strin
 	return true
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	f := &FilterString{
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "FilterString",
-			Status: 0,
-			ChanNum: 1,
+			Name:     "FilterString",
+			Status:   0,
+			ChanNum:  1,
 		},
 		fields: make([]filterStringField, 0),
 	}

@@ -20,10 +20,12 @@ func (v *ValueMapping) Run(indata *chan interface{}, outdata *chan interface{}, 
 	if v.dstField == "" {
 		v.dstField = v.srcField
 	} else {
-		datameta[v.dstField] = map[string]interface{}{
-			"index":  len(datameta),
-			"type":   "string",
-			"format": "",
+		if _, ok := datameta[v.dstField]; !ok {
+			datameta[v.dstField] = map[string]interface{}{
+				"index":  len(datameta),
+				"type":   "string",
+				"format": "",
+			}
 		}
 	}
 	v.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
@@ -44,22 +46,20 @@ func (v *ValueMapping) Run(indata *chan interface{}, outdata *chan interface{}, 
 }
 
 func processRow(data interface{}, mappings map[string]string, defaultValue string, srcFieldIdx int, dstFieldIdx int) interface{} {
-	if srcFieldIdx == dstFieldIdx {
-		if dstValue, ok := mappings[data.([]interface{})[srcFieldIdx].(string)]; ok {
-			data.([]interface{})[dstFieldIdx] = dstValue
+	if data.([]interface{})[srcFieldIdx] == nil {
+		if defaultValue == "" {
+			data.([]interface{})[dstFieldIdx] = nil
 		} else {
-			if defaultValue != "" {
-				data.([]interface{})[dstFieldIdx] = defaultValue
-			}
+			data.([]interface{})[dstFieldIdx] = defaultValue
 		}
 	} else {
-		if dstValue, ok := mappings[data.([]interface{})[srcFieldIdx].(string)]; ok {
-			data = append(data.([]interface{}), dstValue)
+		if v, ok := mappings[data.([]interface{})[srcFieldIdx].(string)]; ok {
+			data.([]interface{})[dstFieldIdx] = v
 		} else {
-			if defaultValue != "" {
-				data = append(data.([]interface{}), defaultValue)
+			if defaultValue == "" {
+				data.([]interface{})[dstFieldIdx] = nil
 			} else {
-				data = append(data.([]interface{}), data.([]interface{})[srcFieldIdx])
+				data.([]interface{})[dstFieldIdx] = defaultValue
 			}
 		}
 	}
@@ -76,9 +76,9 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			Id:       id,
 			ReadCnt:  0,
 			WriteCnt: 0,
-			Status: 1,
-			Name: "valueMapping",
-			ChanNum: 1,
+			Status:   0,
+			Name:     "valueMapping",
+			ChanNum:  1,
 		},
 	}
 	for _, m := range parameters.(map[string]interface{})["mappings"].([]interface{}) {

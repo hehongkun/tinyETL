@@ -5,10 +5,9 @@ import (
 	"tinyETL/tinyETLengine/components/abstractComponents"
 )
 
-
 type FilterDateField struct {
 	field string
-	date string
+	date  string
 }
 
 type FilterDate struct {
@@ -44,14 +43,14 @@ func processRow(data interface{}, fields []FilterDateField, datameta map[string]
 		if data.([]interface{})[datameta[field.field]["index"].(int)] == nil {
 			continue
 		} else if datameta[field.field]["format"].(string) == "YYYY-MM-DD" {
-			tmpVal,_ := time.Parse("2006-01-02 15:04:05",field.date)
+			tmpVal, _ := time.Parse("2006-01-02 15:04:05", field.date)
 			val, _ := time.Parse("2006-01-02", tmpVal.Format("2006-01-02"))
 			srcVal, _ := time.Parse("2006-01-02", data.([]interface{})[datameta[field.field]["index"].(int)].(time.Time).Format("2006-01-02"))
 			if srcVal == val {
 				return false
 			}
 		} else if datameta[field.field]["format"].(string) == "YYYY-MM-DD HH:MM:SS" {
-			tmpVal,_ := time.Parse("2006-01-02 15:04:05:",field.date)
+			tmpVal, _ := time.Parse("2006-01-02 15:04:05:", field.date)
 			val, _ := time.Parse("2006-01-02 15:04:05", tmpVal.Format("2006-01-02 15:04:05"))
 			srcVal, _ := time.Parse("2006-01-02 15:04:05", data.([]interface{})[datameta[field.field]["index"].(int)].(time.Time).Format("2006-01-02 15:04:05"))
 			if srcVal == val {
@@ -70,7 +69,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			ReadCnt:  0,
 			WriteCnt: 0,
 			Name:     "filterDate",
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]FilterDateField, 0),
 	}

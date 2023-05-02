@@ -50,7 +50,7 @@ func (s *SplitFieldToRows) Run(indata *chan interface{}, outdata *chan interface
 		for _, value := range dataBatch.([][]interface{}) {
 			s.processRow(value, &data, &rowId)
 		}
-		for len(data) >= 1000{
+		for len(data) >= 1000 {
 			*outdata <- data[:1000]
 			s.WriteCnt += 1000
 			data = data[1000:]
@@ -62,7 +62,7 @@ func (s *SplitFieldToRows) Run(indata *chan interface{}, outdata *chan interface
 	}
 }
 
-func (s *SplitFieldToRows)processRow(value []interface{},data *[][]interface{},rowId *int) {
+func (s *SplitFieldToRows) processRow(value []interface{}, data *[][]interface{}, rowId *int) {
 	if s.resetRowId {
 		*rowId = 0
 	}
@@ -76,27 +76,27 @@ func (s *SplitFieldToRows)processRow(value []interface{},data *[][]interface{},r
 		return
 	}
 	if s.isRegexp {
-		spaceRe,_ := regexp.Compile(s.separator)
-		for _,v := range spaceRe.Split(value[s.DataMeta[s.field]["index"].(int)].(string),-1) {
-			newValue := make([]interface{},len(value))
-			copy(newValue,value)
+		spaceRe, _ := regexp.Compile(s.separator)
+		for _, v := range spaceRe.Split(value[s.DataMeta[s.field]["index"].(int)].(string), -1) {
+			newValue := make([]interface{}, len(value))
+			copy(newValue, value)
 			newValue = append(newValue, v)
 			if s.generateRowId {
 				newValue = append(newValue, *rowId)
 				*rowId++
 			}
-			*data = append(*data,newValue)
+			*data = append(*data, newValue)
 		}
 	} else {
-		for _,v := range strings.Split(value[s.DataMeta[s.field]["index"].(int)].(string),s.separator) {
-			newValue := make([]interface{},len(value))
-			copy(newValue,value)
+		for _, v := range strings.Split(value[s.DataMeta[s.field]["index"].(int)].(string), s.separator) {
+			newValue := make([]interface{}, len(value))
+			copy(newValue, value)
 			newValue = append(newValue, v)
 			if s.generateRowId {
 				newValue = append(newValue, *rowId)
 				*rowId++
 			}
-			*data = append(*data,newValue)
+			*data = append(*data, newValue)
 		}
 	}
 }
@@ -109,7 +109,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			Status:   0,
 			ReadCnt:  0,
 			WriteCnt: 0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		field:         parameters.(map[string]interface{})["field"].(string),
 		separator:     parameters.(map[string]interface{})["separator"].(string),

@@ -203,16 +203,25 @@ func DeleteTaskData(id int) (err error) {
 
 // Run the task of the task data
 func Run(taskData *TaskData) (id string, err error) {
+	executors := executor.GetExecutors()
+	exec, err := executor.GenerateExecutor(taskData.Data, taskData.ExecMechine, taskData.DataNum)
+	if err != nil {
+		return "", err
+	}
+	executors.Set(exec.GetId(), exec)
+	exec.Run()
+	return exec.GetId(), nil
+}
+
+// Run the task of the task data
+func Parse(taskData *TaskData) (id string, err error) {
 	exectors := executor.GetExecutors()
 	exec, err := executor.GenerateExecutor(taskData.Data, taskData.ExecMechine, taskData.DataNum)
 	if err != nil {
 		return "", err
 	}
-	lock := executor.GetLock()
-	lock.Lock()
-	(*exectors)[exec.GetId()] = exec
-	lock.Unlock()
-	exec.Run()
+	exectors.Set(exec.GetId(), exec)
+	exectors.Remove(exec.GetId())
 	return exec.GetId(), nil
 }
 
@@ -222,11 +231,53 @@ func Schedule(taskData *TaskData) (err error) {
 	case 0:
 		go Poll(taskData)
 	case 1:
-		Greedy(taskData)
+		go Greedy(taskData)
+	case 2:
+		go DuelingDQN(taskData)
 	default:
 		return errors.New("Schedule type error")
 	}
 	return nil
+}
+
+func DuelingDQN(taskData *TaskData) {
+	//conn, err := grpc.Dial("127.0.0.1:50051", grpc.WithInsecure())
+	//if err != nil {
+	//	log.Printf("did not connect: %v\n", err)
+	//	log.Printf("taskId %d\n", taskData.Id)
+	//}
+	//defer conn.Close()
+	//client := proto.NewCommcsClient(conn)
+
+	url := "http://192.168.102.21:"
+	if taskData.ExecMechine == "k8s-node1" {
+		url += "30081"
+	} else if taskData.ExecMechine == "k8s-node2" {
+		url += "30082"
+	} else if taskData.ExecMechine == "k8s-node3" {
+		url += "30083"
+	} else {
+		url += "30084"
+	}
+	url += "/tinyETL/task/run"
+	bytesData, _ := json.Marshal(taskData)
+	res, err := http.Post(url,
+		"application/json;charset=utf-8", bytes.NewBuffer([]byte(bytesData)))
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		return
+	}
+	content, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		return
+	}
+	str := (*string)(unsafe.Pointer(&content)) //转化为string,优化内存
+	fmt.Println(*str)
+	err = res.Body.Close()
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func Poll(taskData *TaskData) {
@@ -358,8 +409,9 @@ func Greedy(taskData *TaskData) {
 func GetNodeInfo() *NodeInfo {
 	executors := executor.GetExecutors()
 	var n NodeInfo
-	for _, v := range *executors {
-		n.DataNum += v.DataNum
+	tmpe := executors.Items()
+	for _, v := range tmpe {
+		n.DataNum += v.(*executor.Executor).DataNum
 		n.TaskNum += 1
 	}
 	return &n

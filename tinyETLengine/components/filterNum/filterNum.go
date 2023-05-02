@@ -57,7 +57,6 @@ func processRow(data interface{}, fields []FilterNumField, datameta map[string]m
 	return true
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	f := &FilterNum{
 		AbstractComponent: abstractComponents.AbstractComponent{
@@ -66,7 +65,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			ReadCnt:  0,
 			WriteCnt: 0,
 			Name:     "filterNum",
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]FilterNumField, 0),
 	}

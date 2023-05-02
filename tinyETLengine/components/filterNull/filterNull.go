@@ -50,7 +50,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			ReadCnt:  0,
 			WriteCnt: 0,
 			Name:     "filterNull",
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]string, 0),
 	}

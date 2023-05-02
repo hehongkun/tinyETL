@@ -26,6 +26,8 @@ func (c *TaskDataController) URLMapping() {
 	c.Mapping("Put", c.Put)
 	c.Mapping("Delete", c.Delete)
 	c.Mapping("Run", c.Run)
+	c.Mapping("RunTask", c.RunTask)
+	c.Mapping("ParseTask", c.ParseTask)
 	c.Mapping("Schedule", c.Schedule)
 	c.Mapping("GetNodeInfo", c.GetNodeInfo)
 }
@@ -33,7 +35,7 @@ func (c *TaskDataController) URLMapping() {
 // Post ...
 // @Title Post
 // @Description create TaskData
-// @Param	body		body 	models.TaskData	true		"body for TaskData content"
+// @Param	body 	models.TaskData	true		"body for TaskData content"
 // @Success 201 {int} models.TaskData
 // @Failure 403 body is empty
 // @router /add [post]
@@ -173,7 +175,7 @@ func (c *TaskDataController) GetAll() {
 // @Title Put
 // @Description update the TaskData
 // @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.TaskData	true		"body for TaskData content"
+// @Param	body 	models.TaskData	true		"body for TaskData content"
 // @Success 200 {object} models.TaskData
 // @Failure 403 :id is not int
 // @router /edittask/:id [put]
@@ -189,6 +191,7 @@ func (c *TaskDataController) Put() {
 		}
 	} else {
 		c.Data["json"] = err.Error()
+		log.Println(err)
 	}
 	c.ServeJSON()
 }
@@ -211,7 +214,6 @@ func (c *TaskDataController) Delete() {
 	c.ServeJSON()
 }
 
-
 // Post ...
 // @Title Post
 // @Description create TaskData
@@ -224,7 +226,7 @@ func (c *TaskDataController) Run() {
 	ret := make(map[string]interface{})
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := models.UpdateTaskDataById(&v); err == nil {
-			if id,err := models.Run(&v); err == nil {
+			if id, err := models.Run(&v); err == nil {
 				ret["data"] = id
 				ret["success"] = true
 				c.Data["json"] = ret
@@ -238,13 +240,73 @@ func (c *TaskDataController) Run() {
 			ret["success"] = false
 			c.Data["json"] = ret
 		}
-	}else{
+	} else {
 		log.Println(err)
 	}
 	c.ServeJSON()
 }
 
+// Post ...
+// @Title Post
+// @Description parse TaskData
+// @Param	body		body 	models.TaskData	true		"body for TaskData content"
+// @Success 200 {int} executor.id
+// @Failure 403 body is empty
+// @router /parse [post]
+func (c *TaskDataController) ParseTask() {
+	var v models.TaskData
+	ret := make(map[string]interface{})
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
+		if err := models.UpdateTaskDataById(&v); err == nil {
+			if id, err := models.Parse(&v); err == nil {
+				ret["data"] = id
+				ret["success"] = true
+				c.Data["json"] = ret
+			} else {
+				ret["success"] = false
+				ret["data"] = err.Error()
+				c.Data["json"] = ret
+			}
+		} else {
+			ret["data"] = err.Error()
+			ret["success"] = false
+			c.Data["json"] = ret
+		}
+	} else {
+		log.Println(err)
+	}
+	c.ServeJSON()
+}
 
+// Post ...
+// @Title Post
+// @Description create TaskData
+// @Param	body		body 	models.TaskData	true		"body for TaskData content"
+// @Success 200 {int} executor.id
+// @Failure 403 body is empty
+// @router /runTask [post]
+func (c *TaskDataController) RunTask() {
+	var v models.TaskData
+	ret := make(map[string]interface{})
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
+		if v, err := models.GetTaskDataById(v.Id); err == nil {
+			if id, err := models.Run(v); err == nil {
+				ret["data"] = id
+				ret["success"] = true
+				c.Data["json"] = ret
+			} else {
+				ret["success"] = false
+				ret["data"] = err.Error()
+				c.Data["json"] = ret
+			}
+		} else {
+			c.Data["json"] = err.Error()
+		}
+	} else {
+		log.Println(err)
+	}
+	c.ServeJSON()
+}
 
 // Post ...
 // @Title Post
@@ -268,9 +330,6 @@ func (c *TaskDataController) Schedule() {
 	}
 	c.ServeJSON()
 }
-
-
-
 
 // GetAllTaskList ...
 // @Title Get All Task Of a User

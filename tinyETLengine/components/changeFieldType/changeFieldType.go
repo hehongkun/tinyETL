@@ -49,7 +49,7 @@ func (c *changeFieldType) Run(indata *chan interface{}, outdata *chan interface{
 	}
 }
 
-func (c *changeFieldType)processRow(data interface{}, srcDatameta map[string]map[string]interface{}, dstFiledTypes []dstFieldType) interface{} {
+func (c *changeFieldType) processRow(data interface{}, srcDatameta map[string]map[string]interface{}, dstFiledTypes []dstFieldType) interface{} {
 	row := data.([]interface{})
 	var err error
 	for _, dstFieldType := range dstFiledTypes {
@@ -63,7 +63,7 @@ func (c *changeFieldType)processRow(data interface{}, srcDatameta map[string]map
 		}
 		if dstFieldType.fieldType == "string" {
 			if srcColType == "int" {
-				row[colIdx] = strconv.Itoa(row[colIdx].(int))
+				row[colIdx] = strconv.Itoa(int(row[colIdx].(int64)))
 			} else if srcColType == "float" {
 				row[colIdx] = strconv.FormatFloat(row[colIdx].(float64), 'f', -1, 64)
 			} else if srcColType == "bool" {
@@ -149,11 +149,11 @@ func (c *changeFieldType)processRow(data interface{}, srcDatameta map[string]map
 				row[colIdx] = time.Unix(int64(row[colIdx].(float64)), 0)
 			} else if srcColType == "time" {
 				if dstFieldType.fieldFormat == "YYYY-MM-DD HH:MM:SS" {
-					row[colIdx],_ = time.Parse("2006-01-02 15:04:05",row[colIdx].(time.Time).Format("2006-01-02 15:04:05"))
+					row[colIdx], _ = time.Parse("2006-01-02 15:04:05", row[colIdx].(time.Time).Format("2006-01-02 15:04:05"))
 				} else if dstFieldType.fieldFormat == "YYYY-MM-DD" {
-					row[colIdx],_ = time.Parse("2006-01-02",row[colIdx].(time.Time).Format("2006-01-02"))
+					row[colIdx], _ = time.Parse("2006-01-02", row[colIdx].(time.Time).Format("2006-01-02"))
 				} else {
-					row[colIdx],_ = time.Parse("2006-01-02 03:04:05",row[colIdx].(time.Time).Format("2006-01-02 03:04:05"))
+					row[colIdx], _ = time.Parse("2006-01-02 03:04:05", row[colIdx].(time.Time).Format("2006-01-02 03:04:05"))
 				}
 			} else if srcColType == "interface" {
 				row[colIdx] = time.Time(row[colIdx].(time.Time))
@@ -174,12 +174,12 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 	params := parameters.(map[string]interface{})
 	c := changeFieldType{
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "ChangeFieldType",
-			Status: 0,
-			ChanNum: 1,
+			Name:     "ChangeFieldType",
+			Status:   0,
+			ChanNum:  1,
 		},
 		dstFieldTypes: []dstFieldType{},
 	}

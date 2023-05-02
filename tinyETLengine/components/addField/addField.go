@@ -18,7 +18,7 @@ func (a *AddField) Run(indata *chan interface{}, outdata *chan interface{}, data
 	defer close(*outdata)
 	defer a.SetEndTime()
 	a.DataMeta = datameta
-	for _,field := range a.fields {
+	for _, field := range a.fields {
 		a.DataMeta[field.field] = map[string]interface{}{
 			"index":  len(a.DataMeta),
 			"type":   field.fieldType,
@@ -38,6 +38,7 @@ func (a *AddField) Run(indata *chan interface{}, outdata *chan interface{}, data
 		}
 		*outdata <- data
 		a.WriteCnt += len(data)
+		data = make([][]interface{}, 0)
 	}
 }
 
@@ -48,8 +49,6 @@ func (a *AddField) processRow(data *[]interface{}, fields []fieldConfig, outdata
 	*outdata = append(*outdata, *data)
 }
 
-
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	f := &AddField{
 		AbstractComponent: abstractComponents.AbstractComponent{
@@ -58,15 +57,15 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "AddField",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]fieldConfig, 0),
 	}
 	for _, value := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		f.fields = append(f.fields, fieldConfig{
-			field:    value.(map[string]interface{})["field"].(string),
-			fieldType:    value.(map[string]interface{})["fieldType"].(string),
-			format: value.(map[string]interface{})["format"].(string),
+			field:     value.(map[string]interface{})["field"].(string),
+			fieldType: value.(map[string]interface{})["fieldType"].(string),
+			format:    value.(map[string]interface{})["format"].(string),
 		})
 	}
 	return f, nil

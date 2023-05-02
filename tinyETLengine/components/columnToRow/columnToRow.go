@@ -53,7 +53,7 @@ func (c *columnToRow) Run(indata *chan interface{}, outdata *chan interface{}, d
 		}
 		c.ReadCnt += len(dataBatch.([][]interface{}))
 		data := make([][]interface{}, 0)
-		for _,value := range dataBatch.([][]interface{}) {
+		for _, value := range dataBatch.([][]interface{}) {
 			if value[datameta[c.keyField]["index"].(int)] == nil {
 				continue
 			} else if value[datameta[c.keyField]["index"].(int)] == nil {
@@ -134,8 +134,8 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			ReadCnt:  0,
 			WriteCnt: 0,
 			Name:     "columnToRow",
-			Status: 0,
-			ChanNum: 1,
+			Status:   0,
+			ChanNum:  1,
 		},
 	}
 	for _, field := range parameters.(map[string]interface{})["groupByFields"].([]interface{}) {

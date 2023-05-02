@@ -60,7 +60,7 @@ func processRow(data interface{}, fields []filterDateRangeField, datameta map[st
 					return false
 				}
 			}
-		}else {
+		} else {
 			if datameta[field.field]["format"].(string) == "YYYY-MM-DD" {
 				minVal, _ := time.Parse("2006-01-02", field.minValue)
 				maxVal, _ := time.Parse("2006-01-02", field.maxValue)
@@ -86,7 +86,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "FilterString",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]filterDateRangeField, 0),
 	}

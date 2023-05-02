@@ -46,28 +46,28 @@ func processRow(data interface{}, fields []filterNumRangeField, datameta map[str
 			continue
 		} else if field.filterType == "in" {
 			if datameta[field.field]["type"].(string) == "int" {
-				minVal,_ := strconv.ParseInt(field.minValue, 10, 64)
-				maxVal,_ := strconv.ParseInt(field.maxValue, 10, 64)
+				minVal, _ := strconv.ParseInt(field.minValue, 10, 64)
+				maxVal, _ := strconv.ParseInt(field.maxValue, 10, 64)
 				if data.([]interface{})[datameta[field.field]["index"].(int)].(int64) >= minVal && data.([]interface{})[datameta[field.field]["index"].(int)].(int64) <= maxVal {
 					return false
 				}
-			}else if datameta[field.field]["type"].(string) == "float" {
-				minVal,_ := strconv.ParseFloat(field.minValue, 64)
-				maxVal,_ := strconv.ParseFloat(field.maxValue, 64)
+			} else if datameta[field.field]["type"].(string) == "float" {
+				minVal, _ := strconv.ParseFloat(field.minValue, 64)
+				maxVal, _ := strconv.ParseFloat(field.maxValue, 64)
 				if data.([]interface{})[datameta[field.field]["index"].(int)].(float64) >= minVal && data.([]interface{})[datameta[field.field]["index"].(int)].(float64) <= maxVal {
 					return false
 				}
 			}
 		} else {
 			if datameta[field.field]["type"].(string) == "int" {
-				minVal,_ := strconv.ParseInt(field.minValue, 10, 64)
-				maxVal,_ := strconv.ParseInt(field.maxValue, 10, 64)
+				minVal, _ := strconv.ParseInt(field.minValue, 10, 64)
+				maxVal, _ := strconv.ParseInt(field.maxValue, 10, 64)
 				if data.([]interface{})[datameta[field.field]["index"].(int)].(int64) < minVal || data.([]interface{})[datameta[field.field]["index"].(int)].(int64) > maxVal {
 					return false
 				}
-			}else if datameta[field.field]["type"].(string) == "float" {
-				minVal,_ := strconv.ParseFloat(field.minValue, 64)
-				maxVal,_ := strconv.ParseFloat(field.maxValue, 64)
+			} else if datameta[field.field]["type"].(string) == "float" {
+				minVal, _ := strconv.ParseFloat(field.minValue, 64)
+				maxVal, _ := strconv.ParseFloat(field.maxValue, 64)
 				if data.([]interface{})[datameta[field.field]["index"].(int)].(float64) < minVal || data.([]interface{})[datameta[field.field]["index"].(int)].(float64) > maxVal {
 					return false
 				}
@@ -77,7 +77,6 @@ func processRow(data interface{}, fields []filterNumRangeField, datameta map[str
 	return true
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	f := &FilterNumRange{
 		AbstractComponent: abstractComponents.AbstractComponent{
@@ -86,15 +85,15 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "FilterString",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]filterNumRangeField, 0),
 	}
 	for _, value := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		f.fields = append(f.fields, filterNumRangeField{
 			field:      value.(map[string]interface{})["field"].(string),
-			minValue:      value.(map[string]interface{})["minValue"].(string),
-			maxValue:      value.(map[string]interface{})["maxValue"].(string),
+			minValue:   value.(map[string]interface{})["minValue"].(string),
+			maxValue:   value.(map[string]interface{})["maxValue"].(string),
 			filterType: value.(map[string]interface{})["filterType"].(string),
 		})
 	}

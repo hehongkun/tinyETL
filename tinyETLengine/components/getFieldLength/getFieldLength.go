@@ -23,14 +23,14 @@ func (g *GetFieldLength) Run(indata *chan interface{}, outdata *chan interface{}
 	g.DataMeta = datameta
 	g.SetStatus(1)
 	data := make([][]interface{}, 0)
-	for _,field := range g.fields {
-		if _,ok := g.DataMeta[field.targetField]; !ok {
+	for _, field := range g.fields {
+		if _, ok := g.DataMeta[field.targetField]; !ok {
 			g.DataMeta[field.targetField] = map[string]interface{}{
-				"type": "int",
-				"index": len(g.DataMeta),
+				"type":   "int",
+				"index":  len(g.DataMeta),
 				"format": "",
 			}
-		} else{
+		} else {
 			g.DataMeta[field.targetField]["type"] = "int"
 			g.DataMeta[field.targetField]["format"] = ""
 		}
@@ -53,7 +53,7 @@ func (g *GetFieldLength) Run(indata *chan interface{}, outdata *chan interface{}
 
 func (g *GetFieldLength) processRow(data *[]interface{}, fields []fieldLengthField, outdata *[][]interface{}) {
 	tmpData := make([]interface{}, len(g.DataMeta))
-	for idx,val := range *data {
+	for idx, val := range *data {
 		tmpData[idx] = val
 	}
 	for _, field := range fields {
@@ -80,7 +80,6 @@ func (g *GetFieldLength) processRow(data *[]interface{}, fields []fieldLengthFie
 	*outdata = append(*outdata, tmpData)
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	f := &GetFieldLength{
 		AbstractComponent: abstractComponents.AbstractComponent{
@@ -89,7 +88,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "GetFieldLength",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]fieldLengthField, 0),
 	}

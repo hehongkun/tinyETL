@@ -23,12 +23,18 @@ func (c *ReplaceString) Run(indata *chan interface{}, outdata *chan interface{},
 	defer close(*outdata)
 	defer c.SetEndTime()
 	for _, field := range c.fields {
+		if field.outputField == "" {
+			field.outputField = field.inputField
+			continue
+		}
 		if _, ok := datameta[field.outputField]; !ok {
 			datameta[field.outputField] = map[string]interface{}{
 				"index":  len(datameta),
 				"type":   "string",
 				"format": "",
 			}
+		} else {
+			datameta[field.outputField] = datameta[field.inputField]
 		}
 	}
 	c.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
@@ -48,7 +54,7 @@ func (c *ReplaceString) Run(indata *chan interface{}, outdata *chan interface{},
 					data = append(data, value)
 					continue
 				}
-				data = append(data,processRow(value, datameta[field.inputField]["index"].(int), datameta[field.outputField]["index"].(int), field.searchStr, field.replaceStr).([]interface{}))
+				data = append(data, processRow(value, datameta[field.inputField]["index"].(int), datameta[field.outputField]["index"].(int), field.searchStr, field.replaceStr).([]interface{}))
 			}
 		}
 		*outdata <- data
@@ -57,7 +63,11 @@ func (c *ReplaceString) Run(indata *chan interface{}, outdata *chan interface{},
 }
 
 func processRow(value []interface{}, srcIdx int, dstIdx int, searchStr string, replaceStr string) interface{} {
-	value[dstIdx] = strings.Replace(value[srcIdx].(string), searchStr, replaceStr, -1)
+	if value[srcIdx] == nil {
+		value[dstIdx] = nil
+	} else {
+		value[dstIdx] = strings.Replace(value[srcIdx].(string), searchStr, replaceStr, -1)
+	}
 	return value
 }
 
@@ -69,8 +79,8 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			ReadCnt:  0,
 			WriteCnt: 0,
 			Name:     "replaceString",
-			Status: 0,
-			ChanNum: 1,
+			Status:   0,
+			ChanNum:  1,
 		},
 	}
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {

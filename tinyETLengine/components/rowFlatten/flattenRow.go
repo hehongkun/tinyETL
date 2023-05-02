@@ -15,7 +15,7 @@ func (f *RowFlatten) Run(indata *chan interface{}, outdata *chan interface{}, da
 	defer close(*outdata)
 	defer f.SetEndTime()
 	f.DataMeta = make(map[string]map[string]interface{})
-	for _,field := range f.targetFields {
+	for _, field := range f.targetFields {
 		f.DataMeta[field] = map[string]interface{}{
 			"type":   datameta[f.flattenField]["type"],
 			"index":  len(f.DataMeta),
@@ -24,7 +24,7 @@ func (f *RowFlatten) Run(indata *chan interface{}, outdata *chan interface{}, da
 	}
 	f.SetStatus(1)
 	data := make([][]interface{}, 0)
-	tmpData := make([]interface{},0)
+	tmpData := make([]interface{}, 0)
 	for {
 		dataBatch, ok := <-*indata
 		if !ok {
@@ -35,7 +35,7 @@ func (f *RowFlatten) Run(indata *chan interface{}, outdata *chan interface{}, da
 			tmpData = append(tmpData, value[datameta[f.flattenField]["index"].(int)])
 			if len(tmpData) == len(f.targetFields) {
 				data = append(data, tmpData)
-				tmpData = make([]interface{},0)
+				tmpData = make([]interface{}, 0)
 			}
 		}
 		if len(data) >= 1000 {
@@ -44,7 +44,7 @@ func (f *RowFlatten) Run(indata *chan interface{}, outdata *chan interface{}, da
 			data = make([][]interface{}, 0)
 		}
 	}
-	if len(tmpData)>0 {
+	if len(tmpData) > 0 {
 		data = append(data, tmpData)
 	}
 	if len(data) > 0 {
@@ -61,13 +61,13 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			Status:   0,
 			ReadCnt:  0,
 			WriteCnt: 0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		flattenField: parameters.(map[string]interface{})["flattenField"].(string),
 		targetFields: []string{},
 	}
 	for _, value := range parameters.(map[string]interface{})["fields"].([]interface{}) {
-		f.targetFields = append(f.targetFields, value.(map[string]interface {})["targetField"].(string))
+		f.targetFields = append(f.targetFields, value.(map[string]interface{})["targetField"].(string))
 	}
 	return f, nil
 }

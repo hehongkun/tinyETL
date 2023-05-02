@@ -24,7 +24,7 @@ func (s *SetFieldValue) Run(indata *chan interface{}, outdata *chan interface{},
 				"type":   s.DataMeta[v.srcField]["type"],
 				"format": s.DataMeta[v.srcField]["format"],
 			}
-		}else {
+		} else {
 			s.DataMeta[v.targetField]["type"] = s.DataMeta[v.srcField]["type"]
 			s.DataMeta[v.targetField]["format"] = s.DataMeta[v.srcField]["format"]
 		}
@@ -39,11 +39,15 @@ func (s *SetFieldValue) Run(indata *chan interface{}, outdata *chan interface{},
 		data := make([][]interface{}, 0)
 		for _, value := range dataBatch.([][]interface{}) {
 			tmpData := make([]interface{}, len(s.DataMeta))
-			for i,v := range value {
+			for i, v := range value {
 				tmpData[i] = v
 			}
 			for _, v := range s.fields {
-				tmpData[s.DataMeta[v.targetField]["index"].(int)] = value[s.DataMeta[v.srcField]["index"].(int)]
+				if value[s.DataMeta[v.srcField]["index"].(int)] == nil {
+					tmpData[s.DataMeta[v.targetField]["index"].(int)] = nil
+				} else {
+					tmpData[s.DataMeta[v.targetField]["index"].(int)] = value[s.DataMeta[v.srcField]["index"].(int)]
+				}
 			}
 			data = append(data, tmpData)
 		}
@@ -60,7 +64,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			Status:   0,
 			ReadCnt:  0,
 			WriteCnt: 0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]setFieldValueField, 0),
 	}

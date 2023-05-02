@@ -76,8 +76,8 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			ReadCnt:  0,
 			WriteCnt: 0,
 			Name:     "cutString",
-			Status: 0,
-			ChanNum: 1,
+			Status:   0,
+			ChanNum:  1,
 		},
 	}
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {

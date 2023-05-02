@@ -49,7 +49,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "DeleteField",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		fields: make([]string, 0),
 	}

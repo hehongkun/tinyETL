@@ -89,13 +89,13 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			Status:   0,
 			ReadCnt:  0,
 			WriteCnt: 0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 		field:        parameters.(map[string]interface{})["field"].(string),
 		targetFields: []string{},
 	}
-	c.startNum,_ = strconv.ParseInt(parameters.(map[string]interface{})["startNum"].(string), 10, 64)
-	c.step,_ = strconv.ParseInt(parameters.(map[string]interface{})["step"].(string), 10, 64)
+	c.startNum, _ = strconv.ParseInt(parameters.(map[string]interface{})["startNum"].(string), 10, 64)
+	c.step, _ = strconv.ParseInt(parameters.(map[string]interface{})["step"].(string), 10, 64)
 	for _, v := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		c.targetFields = append(c.targetFields, v.(map[string]interface{})["targetField"].(string))
 	}

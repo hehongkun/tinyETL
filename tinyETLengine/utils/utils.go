@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,7 +33,6 @@ func DeepCopy(value map[string]map[string]interface{}) interface{} {
 	return newMap
 }
 
-
 // 获取随机字母+数字组合字符串
 func getRandstring(length int) string {
 	if length < 1 {
@@ -48,18 +48,15 @@ func getRandstring(length int) string {
 	}
 	return rchar
 }
-// 随机文件名
-func RandFileName(fileName string) string{
-	randStr := getRandstring(16)
+
+// RandFileName 随机文件名
+func RandFileName(fileName string) string {
+	uuid, _ := GenerateUUID()
+	randStr := uuid + getRandstring(16)
 	return randStr + filepath.Ext(fileName)
 }
 
-func DumpToFile(data interface{}, filename string) error {
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+func DumpToFile(data interface{}, file *os.File) error {
 	for _, v := range data.([][]interface{}) {
 		tmp, _ := json.Marshal(v)
 		_, err := file.WriteString(string(tmp) + "\n")
@@ -70,17 +67,8 @@ func DumpToFile(data interface{}, filename string) error {
 	return nil
 }
 
-func LoadFromFile(filename string, datameta map[string]map[string]interface{}, start int, end int) (data [][]interface{}, err error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(file)
+func LoadFromFile(file *os.File, datameta map[string]map[string]interface{}, start int, end int) (data [][]interface{}, err error) {
+	file.Seek(0, 0)
 	r := bufio.NewReader(file)
 	l := 0
 	for {
@@ -107,16 +95,26 @@ func LoadFromFile(filename string, datameta map[string]map[string]interface{}, s
 			for _, v1 := range datameta {
 				if v1["index"].(int) == i {
 					if v1["type"].(string) == "int" {
-						tmp[i] = int64(v.(float64))
+						if reflect.TypeOf(v).String() == "float64" {
+							tmp[i] = int64(v.(float64))
+						} else if reflect.TypeOf(v).String() == "string" {
+							tmp[i], _ = strconv.ParseInt(v.(string), 10, 64)
+						} else {
+							tmp[i] = v.(int64)
+						}
 					} else if v1["type"].(string) == "float" {
 						tmp[i], _ = v.(float64)
 					} else if v1["type"].(string) == "string" {
-						tmp[i] = v.(string)
+						if reflect.TypeOf(v).String() == "float64" {
+							tmp[i] = strconv.FormatFloat(v.(float64), 'f', -1, 64)
+						} else {
+							tmp[i] = v.(string)
+						}
 					} else if v1["type"].(string) == "time" {
 						if v1["format"].(string) == "YYYY-MM-DD" {
 							if reflect.TypeOf(v).String() == "string" {
 								tmp[i], err = time.Parse(time.RFC3339, v.(string))
-								if err != nil{
+								if err != nil {
 									log.Println(err)
 								}
 							} else if reflect.TypeOf(v).String() == "time.Time" {
@@ -125,7 +123,7 @@ func LoadFromFile(filename string, datameta map[string]map[string]interface{}, s
 						} else if v1["format"].(string) == "YYYY-MM-DD HH:MM:SS" {
 							if reflect.TypeOf(v).String() == "string" {
 								tmp[i], err = time.Parse(time.RFC3339, v.(string))
-								if err != nil{
+								if err != nil {
 									log.Println(err)
 								}
 							} else if reflect.TypeOf(v).String() == "time.Time" {

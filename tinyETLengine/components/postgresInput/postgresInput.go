@@ -10,7 +10,6 @@ import (
 	"tinyETL/tinyETLengine/components/abstractComponents"
 )
 
-
 type postgresInput struct {
 	username string
 	password string
@@ -26,7 +25,7 @@ func (p *postgresInput) Run(indata *chan interface{}, outdata *chan interface{},
 	p.SetStartTime()
 	defer close(*outdata)
 	defer p.SetEndTime()
-	db,err := sql.Open("postgres", "user="+p.username+" password="+p.password+" host="+p.host+" port="+p.port+" dbname="+p.database+" sslmode=disable")
+	db, err := sql.Open("postgres", "user="+p.username+" password="+p.password+" host="+p.host+" port="+p.port+" dbname="+p.database+" sslmode=disable")
 	defer func(db *sql.DB) {
 		err := db.Close()
 		if err != nil {
@@ -65,17 +64,17 @@ func (p *postgresInput) Run(indata *chan interface{}, outdata *chan interface{},
 		}
 		row := make([]interface{}, len(cols))
 		for idx, v := range values {
-			if v == nil{
+			if v == nil {
 				row[idx] = nil
 			} else {
 				if p.DataMeta[cols[idx]]["type"] == "int" {
 					row[idx] = v.(int64)
-				}else if p.DataMeta[cols[idx]]["type"] == "float" {
+				} else if p.DataMeta[cols[idx]]["type"] == "float" {
 					row[idx], _ = strconv.ParseFloat(string(v.([]byte)), 64)
-				}else if p.DataMeta[cols[idx]]["type"] == "time" {
+				} else if p.DataMeta[cols[idx]]["type"] == "time" {
 					if p.DataMeta[cols[idx]]["format"] == "YYYY-MM-DD HH:MM:SS" {
 						row[idx] = v.(time.Time).Format("2006-01-02 15:04:05")
-					}else if p.DataMeta[cols[idx]]["format"] == "YYYY-MM-DD" {
+					} else if p.DataMeta[cols[idx]]["format"] == "YYYY-MM-DD" {
 						row[idx] = v.(time.Time).Format("2006-01-02")
 					} else {
 						row[idx] = v.(time.Time).Format("2006-01-02 03:04:05")
@@ -121,37 +120,37 @@ func (p *postgresInput) setDataMeta(db *sql.DB, cols []string) {
 		}
 		if dataType == "character varying" {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "string",
+				"type":   "string",
 				"format": "",
 			}
 		} else if dataType == "character" {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "string",
+				"type":   "string",
 				"format": "",
 			}
 		} else if dataType == "integer" {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "int",
+				"type":   "int",
 				"format": "",
 			}
 		} else if dataType == "timestamp without time zone" {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "time",
+				"type":   "time",
 				"format": "YYYY-MM-DD HH:MM:SS",
 			}
 		} else if dataType == "date" {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "time",
+				"type":   "time",
 				"format": "YYYY-MM-DD",
 			}
 		} else if dataType == "numeric" {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "float",
+				"type":   "float",
 				"format": "",
 			}
 		} else {
 			p.DataMeta[columnName] = map[string]interface{}{
-				"type": "string",
+				"type":   "string",
 				"format": "",
 			}
 		}
@@ -172,15 +171,15 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 		host:     params["host"].(string),
 		port:     params["port"].(string),
 		database: params["database"].(string),
-		table: params["table"].(string),
+		table:    params["table"].(string),
 		sql:      params["sql"].(string),
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "postgresInput",
-			Status: 0,
-			ChanNum: 1,
+			Name:     "postgresInput",
+			Status:   0,
+			ChanNum:  1,
 		},
 	}
 	return &p, nil

@@ -117,8 +117,26 @@ func init() {
 
     beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
         beego.ControllerComments{
+            Method: "ParseTask",
+            Router: "/parse",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
             Method: "Run",
             Router: "/run",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"] = append(beego.GlobalControllerRouter["tinyETL/controllers:TaskDataController"],
+        beego.ControllerComments{
+            Method: "RunTask",
+            Router: "/runTask",
             AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,

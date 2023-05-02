@@ -1,8 +1,10 @@
 package mysqlOutput
 
 import (
+	"bytes"
 	"database/sql"
 	"log"
+	"time"
 	"tinyETL/tinyETLengine/components/abstractComponents"
 	"tinyETL/tinyETLengine/components/utils"
 )
@@ -23,34 +25,37 @@ type mysqlOutput struct {
 	abstractComponents.AbstractComponent
 }
 
-func (m *mysqlOutput) GetBatchInsertSql(dataBatchArg *interface{}) (string, []interface{}) {
-	dataBatch := (*dataBatchArg).([][]interface{})
-	sql := "insert into " + m.table + " ("
+func (m *mysqlOutput) GetBatchInsertSql(dataBatchArg *[][]interface{}) (string, []interface{}) {
+	dataBatch := *dataBatchArg
+	var buffer bytes.Buffer
+	buffer.WriteString("insert into ")
+	buffer.WriteString(m.table)
+	buffer.WriteString(" (")
 	for idx, v := range m.fieldMappings {
-		sql += v.dstField
+		buffer.WriteString(v.dstField)
 		if idx != len(m.fieldMappings)-1 {
-			sql += ","
+			buffer.WriteString(",")
 		}
 	}
 	vals := make([]interface{}, len(dataBatch)*len(m.fieldMappings))
-	sql += ") values "
+	buffer.WriteString(") values ")
 	for idx, data := range dataBatch {
-		sql += "("
+		buffer.WriteString("(")
 		for idx1, v := range m.fieldMappings {
-			sql += "?"
+			buffer.WriteString("?")
 			if idx1 != len(m.fieldMappings)-1 {
-				sql += ","
+				buffer.WriteString(",")
 			}
 			vals[idx*len(m.fieldMappings)+idx1] = data[m.DataMeta[v.srcField]["index"].(int)]
 		}
-		sql += ")"
+		buffer.WriteString(")")
 		if idx != len(dataBatch)-1 {
-			sql += ","
+			buffer.WriteString(",")
 		}
 	}
-	return sql, vals
+	insertSql := buffer.String()
+	return insertSql, vals
 }
-
 
 func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	m.SetStartTime()
@@ -59,12 +64,7 @@ func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, d
 	m.DataMeta = utils.DeepCopy(datameta).(map[string]map[string]interface{})
 	m.SetStatus(1)
 	db, _ := sql.Open("mysql", m.username+":"+m.password+"@tcp("+m.host+":"+m.port+")/"+m.database)
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(db)
+	db.SetConnMaxLifetime(60 * time.Second)
 	for {
 		dataBatch, ok := <-*indata
 		if !ok {
@@ -73,11 +73,31 @@ func (m *mysqlOutput) Run(indata *chan interface{}, outdata *chan interface{}, d
 		if len(dataBatch.([][]interface{})) == 0 {
 			continue
 		}
-		batchInsertSql, vals := m.GetBatchInsertSql(&(dataBatch))
-		_, err := db.Exec(batchInsertSql,vals...)
-		if err != nil {
-			log.Println(err)
+		if len(dataBatch.([][]interface{})) > 10000 {
+			for i := 0; i < len(dataBatch.([][]interface{})); i += 10000 {
+				j := 1000
+				if (i + 1000) > len(dataBatch.([][]interface{})) {
+					j = len(dataBatch.([][]interface{})) - i
+				}
+				tmpDataBatch := dataBatch.([][]interface{})[i:j]
+				batchInsertSql, vals := m.GetBatchInsertSql(&tmpDataBatch)
+				_, err := db.Exec(batchInsertSql, vals...)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		} else {
+			tmpDataBatch := dataBatch.([][]interface{})
+			batchInsertSql, vals := m.GetBatchInsertSql(&tmpDataBatch)
+			_, err := db.Exec(batchInsertSql, vals...)
+			if err != nil {
+				log.Println(err)
+			}
 		}
+	}
+	err := db.Close()
+	if err != nil {
+		log.Println(err)
 	}
 }
 
@@ -97,7 +117,7 @@ func NewComponents(id string, parameters interface{}) (abstractComponents.Virtua
 			WriteCnt: 0,
 			Name:     "mysqlOutput",
 			Status:   0,
-			ChanNum: 1,
+			ChanNum:  1,
 		},
 	}
 	for _, v := range params["fieldMappings"].([]interface{}) {

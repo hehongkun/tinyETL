@@ -3,7 +3,7 @@ package executor
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	concurrentMap "github.com/orcaman/concurrent-map"
 	"io"
 	"log"
 	"net/http"
@@ -41,7 +41,7 @@ type Executor struct {
 	CurrNodeDataCnt       int
 }
 
-var executors map[string]*Executor
+var executors concurrentMap.ConcurrentMap
 var lock = &sync.Mutex{}
 var getCpuUsageTime time.Time
 var getMemUsageTime time.Time
@@ -53,18 +53,19 @@ func GetLock() *sync.Mutex {
 }
 
 func GetExecutor(id string) *Executor {
-	return executors[id]
+	exec, _ := executors.Get(id)
+	return exec.(*Executor)
 }
 
-func GetExecutors() *map[string]*Executor {
+func GetExecutors() concurrentMap.ConcurrentMap {
 	if executors == nil {
 		lock.Lock()
 		defer lock.Unlock()
 		if executors == nil {
-			executors = make(map[string]*Executor)
+			executors = concurrentMap.New()
 		}
 	}
-	return &executors
+	return executors
 }
 
 func (e *Executor) SetComponents(params interface{}) error {
@@ -83,6 +84,7 @@ func (e *Executor) SetComponents(params interface{}) error {
 }
 
 func (e *Executor) GetStartTime() time.Time {
+
 	return e.startTime
 }
 
@@ -128,7 +130,7 @@ func (e *Executor) GetCpuUsage(startFlag bool) {
 	resp, err := client.Get(url)
 	if err != nil {
 		e.startCpuUsage = -999999
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	defer resp.Body.Close()
@@ -141,7 +143,7 @@ func (e *Executor) GetCpuUsage(startFlag bool) {
 			break
 		} else if err != nil {
 			e.startCpuUsage = -999999
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 	}
@@ -196,7 +198,7 @@ func (e *Executor) GetMemUsage(startFlag bool) {
 	resp, err := client.Get(url)
 	if err != nil {
 		e.startMemUsage = -999999
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	defer resp.Body.Close()
@@ -209,7 +211,7 @@ func (e *Executor) GetMemUsage(startFlag bool) {
 			break
 		} else if err != nil {
 			e.startMemUsage = -999999
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 	}
@@ -264,13 +266,12 @@ func (e *Executor) SetCurrNodeStatus() {
 	dataCnt := 0
 	componentNum := 0
 	taskNum := 0
-	lock.Lock()
-	for _, v := range *executors {
-		dataCnt += v.DataNum
-		componentNum += len(v.Components)
+	tmpe := executors.Items()
+	for _, v := range tmpe {
+		dataCnt += v.(*Executor).DataNum
+		componentNum += len(v.(*Executor).Components)
 		taskNum += 1
 	}
-	lock.Unlock()
 	e.CurrNodeDataCnt = dataCnt
 	e.CurrNodeComponentCnt = componentNum
 	e.CurrNodeTaskCnt = taskNum
@@ -279,14 +280,14 @@ func (e *Executor) SetCurrNodeStatus() {
 func (e *Executor) SetChans() {
 	for component, _ := range e.Components {
 		if e.Components[component].GetChanNum() == 1 {
-			indata := make(chan interface{}, 1000)
-			outdata := make(chan interface{}, 1000)
+			indata := make(chan interface{}, 100000)
+			outdata := make(chan interface{}, 100000)
 			e.inDataPipeLine[component] = &indata
 			e.outDataPipeLine[component] = &outdata
 		} else {
-			outdata := make(chan interface{}, 1000)
+			outdata := make(chan interface{}, 100000)
 			for _, v := range e.inDegreeList[component] {
-				indata := make(chan interface{}, 1000)
+				indata := make(chan interface{}, 100000)
 				e.inDataPipeLine[component+v] = &indata
 			}
 			e.outDataPipeLine[component] = &outdata
@@ -295,7 +296,6 @@ func (e *Executor) SetChans() {
 }
 
 func GenerateExecutor(params string, execMechine string, dataNum int) (*Executor, error) {
-	fmt.Println("params:", params)
 	var executor Executor
 	var config map[string]interface{}
 	executor.execNode = execMechine
@@ -345,8 +345,8 @@ func GenerateExecutor(params string, execMechine string, dataNum int) (*Executor
 }
 
 func (e *Executor) Run() {
-	e.GetCpuUsage(true)
-	e.GetMemUsage(true)
+	// e.GetCpuUsage(true)
+	// e.GetMemUsage(true)
 	e.status = 1
 	e.SetStartTime(time.Now())
 	go e.taskScheduling("")
@@ -354,8 +354,8 @@ func (e *Executor) Run() {
 
 // 保存任务执行日志进入数据库
 func (e *Executor) saveTaskExecLog() {
-	e.GetCpuUsage(false)
-	e.GetMemUsage(false)
+	// e.GetCpuUsage(false)
+	// e.GetMemUsage(false)
 	targetUrl := "http://192.168.102.21:8000/tinyETL/tasklog/"
 	payload := strings.NewReader("{\"taskId\":\"" + e.id +
 		"\",\"userId\":\"" + e.userId +
@@ -388,6 +388,7 @@ func (e *Executor) saveTaskExecLog() {
 	req.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Println("save task log error:")
 		log.Println(err)
 	}
 	response.Body.Close()
@@ -398,6 +399,7 @@ func (e *Executor) saveTaskExecLog() {
 		req.Header.Add("Content-Type", "application/json")
 		response, err := http.DefaultClient.Do(req)
 		if err != nil {
+			log.Println("save component log error:")
 			log.Println(err)
 		}
 		response.Body.Close()
@@ -422,23 +424,29 @@ func (e *Executor) taskScheduling(componentId string) {
 	} else { // 如果componentId不为空，则将其后续节点启动起来
 		for true {
 			if data, ok := <-*e.outDataPipeLine[componentId]; !ok {
+				e.lock.Lock()
+				e.Components[componentId].SetStatus(2)
 				for _, v := range e.adjacentList[componentId] {
-					if _, ok := e.inDegreeList[v]; ok {
-						if e.Components[v].GetChanNum() == 1 {
+					if e.Components[v].GetChanNum() == 2 {
+						close(*e.inDataPipeLine[v+componentId])
+					} else {
+						closeFlag := true
+						for _, vv := range e.inDegreeList[v] {
+							if e.Components[vv].GetStatus() != 2 {
+								closeFlag = false
+								break
+							}
+						}
+						if closeFlag {
 							close(*e.inDataPipeLine[v])
-						} else {
-							close(*e.inDataPipeLine[v + componentId])
 						}
 					}
 				}
-				lock.Lock()
-				e.lock.Lock()
-				executors := GetExecutors()
-				delete(*executors, e.id)
 				e.finishedComponentsCnt++
 				e.lock.Unlock()
-				lock.Unlock()
 				if e.finishedComponentsCnt == len(e.Components) {
+					executors := GetExecutors()
+					executors.Remove(e.id)
 					log.Println("task finished:", e.id)
 					e.SetEndTime(time.Now())
 					e.saveTaskExecLog()
@@ -457,7 +465,6 @@ func (e *Executor) taskScheduling(componentId string) {
 					//	go e.taskScheduling(v)
 					//}
 					// 将取到的数据发送给后续节点
-					lock.Lock()
 					if e.Components[v].GetStatus() == 0 {
 						if e.Components[v].GetChanNum() == 1 {
 							dataMeta := utils.DeepCopy(e.Components[componentId].GetDataMeta())
@@ -490,7 +497,6 @@ func (e *Executor) taskScheduling(componentId string) {
 							}
 						}
 					}
-					lock.Unlock()
 					if e.Components[v].GetChanNum() == 1 {
 						*e.inDataPipeLine[v] <- data
 					} else {

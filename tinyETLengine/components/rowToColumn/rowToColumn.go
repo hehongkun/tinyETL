@@ -5,20 +5,19 @@ import (
 )
 
 type aimField struct {
-	fieldName string
+	fieldName  string
 	keyValue   string
 	valueField string
 }
 
-
 type rowToColumn struct {
-	keyField string
-	aimFields []aimField
+	keyField       string
+	aimFields      []aimField
 	transformField string
 	abstractComponents.AbstractComponent
 }
 
-func (r *rowToColumn)Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
+func (r *rowToColumn) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	defer close(*outdata)
 	r.SetStartTime()
 	defer r.SetEndTime()
@@ -49,7 +48,7 @@ func (r *rowToColumn)Run(indata *chan interface{}, outdata *chan interface{}, da
 		for _, value := range databBatch.([][]interface{}) {
 			for i, _ := range r.aimFields {
 				tmpData := make([]interface{}, 3)
-				if _,ok := datameta[r.aimFields[i].fieldName]; ok {
+				if _, ok := datameta[r.aimFields[i].fieldName]; ok {
 					tmpData[r.DataMeta[r.keyField]["index"].(int)] = value[datameta[r.keyField]["index"].(int)]
 					tmpData[r.DataMeta[r.transformField]["index"].(int)] = r.aimFields[i].keyValue
 					tmpData[r.DataMeta[r.aimFields[i].valueField]["index"].(int)] = value[datameta[r.aimFields[i].fieldName]["index"].(int)]
@@ -62,25 +61,24 @@ func (r *rowToColumn)Run(indata *chan interface{}, outdata *chan interface{}, da
 	}
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	r := &rowToColumn{
-		keyField: parameters.(map[string]interface{})["keyField"].(string),
+		keyField:       parameters.(map[string]interface{})["keyField"].(string),
 		transformField: parameters.(map[string]interface{})["transformField"].(string),
-		aimFields: make([]aimField, 0),
+		aimFields:      make([]aimField, 0),
 		AbstractComponent: abstractComponents.AbstractComponent{
-			Id: id,
-			ReadCnt: 0,
+			Id:       id,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "rowToColumn",
-			Status: 0,
-			ChanNum: 1,
+			Name:     "rowToColumn",
+			Status:   0,
+			ChanNum:  1,
 		},
 	}
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {
 		r.aimFields = append(r.aimFields, aimField{
-			fieldName: field.(map[string]interface{})["fieldName"].(string),
-			keyValue: field.(map[string]interface{})["keyValue"].(string),
+			fieldName:  field.(map[string]interface{})["fieldName"].(string),
+			keyValue:   field.(map[string]interface{})["keyValue"].(string),
 			valueField: field.(map[string]interface{})["valueField"].(string),
 		})
 	}

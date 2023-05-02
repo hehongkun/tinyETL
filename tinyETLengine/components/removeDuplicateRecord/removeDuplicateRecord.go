@@ -11,7 +11,6 @@ type RemoveDuplicateRecord struct {
 	abstractComponents.AbstractComponent
 }
 
-
 func (c *RemoveDuplicateRecord) Run(indata *chan interface{}, outdata *chan interface{}, datameta map[string]map[string]interface{}, otherChannels ...interface{}) {
 	c.SetStartTime()
 	defer close(*outdata)
@@ -32,7 +31,7 @@ func (c *RemoveDuplicateRecord) Run(indata *chan interface{}, outdata *chan inte
 				tmp[i] = value[datameta[field]["index"].(int)]
 			}
 			flag := true
-			for _,r := range recordAppear {
+			for _, r := range recordAppear {
 				if reflect.DeepEqual(r, tmp) {
 					flag = false
 					break
@@ -48,17 +47,16 @@ func (c *RemoveDuplicateRecord) Run(indata *chan interface{}, outdata *chan inte
 	}
 }
 
-
 func NewComponents(id string, parameters interface{}) (abstractComponents.VirtualComponents, error) {
 	c := &RemoveDuplicateRecord{
 		fields: make([]string, 0),
 		AbstractComponent: abstractComponents.AbstractComponent{
 			Id:       id,
-			Status: 0,
-			ReadCnt: 0,
+			Status:   0,
+			ReadCnt:  0,
 			WriteCnt: 0,
-			Name: "removeDuplicateRecord",
-			ChanNum: 1,
+			Name:     "removeDuplicateRecord",
+			ChanNum:  1,
 		},
 	}
 	for _, field := range parameters.(map[string]interface{})["fields"].([]interface{}) {
