@@ -204,7 +204,7 @@ func DeleteTaskData(id int) (err error) {
 // Run the task of the task data
 func Run(taskData *TaskData) (id string, err error) {
 	executors := executor.GetExecutors()
-	exec, err := executor.GenerateExecutor(taskData.Data, taskData.ExecMechine, taskData.DataNum)
+	exec, err := executor.GenerateExecutor(taskData.Data, taskData.ExecMechine, taskData.Id)
 	if err != nil {
 		return "", err
 	}

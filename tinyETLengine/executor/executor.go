@@ -445,12 +445,12 @@ func (e *Executor) taskScheduling(componentId string) {
 				e.finishedComponentsCnt++
 				e.lock.Unlock()
 				if e.finishedComponentsCnt == len(e.Components) {
-					executors := GetExecutors()
-					executors.Remove(e.id)
 					log.Println("task finished:", e.id)
 					e.SetEndTime(time.Now())
 					e.saveTaskExecLog()
 					e.status = 2
+					executors := GetExecutors()
+					executors.Remove(e.id)
 				}
 				break
 			} else {
